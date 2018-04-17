@@ -8,6 +8,9 @@
 #include <sys/time.h>
 #include <iostream>
 #include <string>
+#include <fstream>
+
+#include "settings.cuh"
 
 //////////////////////////////////////////////////////////////
 // timing
@@ -47,6 +50,71 @@ void checkCUDAError(const std::string msg)
         exit(EXIT_FAILURE);
     }                         
 }
+
+//////////////////////////////////////////////////////////////
+// makeTexture
+/////////////////////////////////////////////////////////////
+
+cudaTextureObject_t makeTexture( cudaArray *cuArray )
+{
+    // Specify texture
+    struct cudaResourceDesc resDesc;
+    memset(&resDesc, 0, sizeof(resDesc));
+    resDesc.resType = cudaResourceTypeArray;
+    resDesc.res.array.array = cuArray;
+
+    // Specify texture object parameters
+    struct cudaTextureDesc texDesc;
+    memset(&texDesc, 0, sizeof(texDesc));
+    texDesc.addressMode[0]   = cudaAddressModeBorder;// out of bounds = 0
+    texDesc.addressMode[1]   = cudaAddressModeBorder;
+    texDesc.filterMode       = cudaFilterModePoint;// nearest neighbor
+    texDesc.readMode         = cudaReadModeElementType;
+    texDesc.normalizedCoords = false;
+
+    // Create texture object
+    cudaTextureObject_t texObj = 0;
+    cudaCreateTextureObject(&texObj, &resDesc, &texDesc, NULL);
+
+    return texObj;
+ 
+}
+
+
+//////////////////////////////////////////////////////////////
+// getConfig
+/////////////////////////////////////////////////////////////
+
+bool getConfig( float camera1[], float camera2[], float worldPoints[] )
+{
+    std::ifstream fd( "./config.txt" );
+
+    if ( !fd.is_open() )
+    {
+	std::cerr << "Could not open config file\n";
+	return false;
+    }
+
+
+    // read camera 1
+    for (int i = 0; i < 12; ++i)
+	fd >> camera1[i];
+
+    // read camera 2
+    for (int i = 0; i < 12; ++i)
+	fd >> camera2[i];
+    
+    // read world points
+    for (int i = 0; i < N_WPOINTS*3; ++i)
+	fd >> worldPoints[i];
+
+    bool status = !fd.fail();
+
+    fd.close();
+    return status;
+
+}
+
 
 
 

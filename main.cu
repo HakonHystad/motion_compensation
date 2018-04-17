@@ -4,49 +4,46 @@
 /////////////////////////////////////////////////////////////
 
 #include <iostream>
-#include <fstream>
 #include <string>
-
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 #include "filter/settings.cuh"
 #include "filter//utilities.cuh"
 #include "filter/filter.cuh"
 
+#define _TEST_FILTER_
 
-bool getConfig( int &nrOfImages, float camera1[], float camera2[], float states[], float worldPoints[] );
-cudaTextureObject_t makeTexture( cudaArray *cuArray );
+#ifdef _TEST_FILTER_
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+using namespace cv;
+
+#endif
+
 
 
 int main(int argc, char *argv[])
 {
-//////////////////////////////////////////////////////////////
-// load test data
-/////////////////////////////////////////////////////////////
-
-    int nrOfImages;
+    //////////////////////////////////////////////////////////////
+    // set initial values for the filter 
+    /////////////////////////////////////////////////////////////
+    
     float camera1[12];
     float camera2[12];
-    float states[N_STATES];
     float worldPoints[N_WPOINTS*3];
 
-    if (!getConfig( nrOfImages, camera1, camera2, states, worldPoints) )
+    // read config file
+    if (!getConfig( camera1, camera2, worldPoints) )
 	exit( EXIT_FAILURE );
 
-    float sigma[N_STATES] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1,\
-			     0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
-/*
+    // x,y,z, x',y',z',a,b,g,a',b',g'
+    float initialStates[N_STATES] = {1.6, -1.5, 2, 0.0324, 0, 0,\
+				    0, 0, 0, 0, 0, 0};
+    // 0.1m, 0.1m/s, ~5.7 deg, ~5.7deg/s
+    float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1,\
+				    0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 
-    float sigma[N_STATES] = {0.5, 0.5, 0.5, 0.1, 0.1, 0.1,\
-			     0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
-
-    float offset[N_STATES] = { 0.5, 0.2, 0.3, 0.1, 0.1, 0.1};
-    for (int i = 0; i < N_STATES; ++i)
-    {
-	states[i] += offset[i];
-    }
-*/  
     /* GPU DATA */
     float *d_camera1;
     float *d_camera2;
@@ -58,13 +55,16 @@ int main(int argc, char *argv[])
     cudaMemcpy( d_camera1, camera1, sizeof( camera1 ), cudaMemcpyHostToDevice );
     cudaMemcpy( d_camera2, camera2, sizeof( camera1 ), cudaMemcpyHostToDevice );
     checkCUDAError("memcpy main");
-    
 
-
-//////////////////////////////////////////////////////////////
-// set up image loading
-/////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    // set up image loading
+    /////////////////////////////////////////////////////////////
     uchar *image;
+    #ifdef _TEST_FILTER_
+    cv::Mat im = cv::imread( "./data/seq_500.png", CV_LOAD_IMAGE_GRAYSCALE );
+    image = im.data;
+    #endif
+    /* end testing */
     cudaMallocHost( (void**)&image, IM_W*IM_H*sizeof(uchar) );
 
     
@@ -76,134 +76,89 @@ int main(int argc, char *argv[])
     auto texObj = makeTexture( cuArray );
 
 
-//////////////////////////////////////////////////////////////
-// filter loop
-/////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    // make filter instance
+    /////////////////////////////////////////////////////////////
 
-    std::ofstream fd("./data/results.txt", std::ios::trunc );
+    auto sir = Filter( initialStates, initialSigma, worldPoints );
 
-    if( !fd.is_open() )
-    {
-	std::cerr << "Could not open results.txt\n";
-	exit( EXIT_FAILURE );
-    }
+    //////////////////////////////////////////////////////////////
+    // get currect image from buffer
+    /////////////////////////////////////////////////////////////
+
+    // TODO: image acquisition
+    // image = something
+    
+    float *camera = d_camera1;// TODO: set which camera took the picture
+    
+    // copy to GPU, TODO: asynchrounous
+    
+    #ifdef _TEST_FILTER_
+    std::cout << "=======================================\n";
+	
+    std::cout << "Timings for " <<  N_PARTICLES << " particles\n";
+    std::cout << "---------------------------------------\n";	
+
+    double start, end, total=0;
+    
+    start = get_current_time();
+    #endif
+    
+    cudaMemcpyToArray(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice);
+    checkCUDAError("mempcy texture");
+	
+    // TODO: get timestamp
+    float prevTime = 0;
+    float newTime = 1.0f/60;
+
+    //////////////////////////////////////////////////////////////
+    // perform filtering 
+    /////////////////////////////////////////////////////////////
 
     
-    auto sir = Filter( states, sigma, worldPoints );
+    sir.update(prevTime, newTime, camera, texObj );
 
-    #if PARTICLE_DBG
-    nrOfImages = 2;// TODO: testing
+    prevTime = newTime;
+
+    sir.resample();
+
+    sir.mean();
+
+    cudaThreadSynchronize();
+
+    #ifdef _TEST_FILTER_
+    end = get_current_time();
+    total += end-start;
+    
+    std::cout << "---------------------------------------\n";	
+    std::cout << "Total time: " << total << "s\n";
     #endif
 
-    float *camera = d_camera1;
-    
-    for (int i = 1; i <= nrOfImages; ++i)
-    {
-	std::string imageName = "./data/seq_" + std::to_string(i) + ".png";
+    //////////////////////////////////////////////////////////////
+    // process new states 
+    /////////////////////////////////////////////////////////////
+    // TODO: prediction + smoothing?
 
-	// load image onto device
-	cv::Mat im = cv::imread( imageName, CV_LOAD_IMAGE_GRAYSCALE );
-	image = im.data;
-	cudaMemcpyToArray(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice);
-	checkCUDAError("mempcy texture");
-
-	sir.update(0, 1.0f/60, camera, texObj );
-
-	sir.resample();
-
-	sir.mean();
-
-	cudaThreadSynchronize();
-
-	for (int i = 0; i < N_STATES; ++i)
-	    fd << sir[i] << " ";
-	fd << std::endl;
-
-	if (camera==d_camera1)
-	{
-	    camera = d_camera2;
-	}
-	else
-	{
-	    camera = d_camera1;
-	}
+    // TODO: send pose to robot as x,y,z in mm? and A,B,C in kuka euler coordinates
 
 
-    }
-       
-    fd.close();
+    // TODO: repeat with new image
+
+
+
+    //////////////////////////////////////////////////////////////
+    // clean up 
+    /////////////////////////////////////////////////////////////
+
+
+    cudaFree( d_camera1 );
+    cudaFree( d_camera2 );
+    cudaFreeArray( cuArray );
+    cudaDestroyTextureObject(texObj);
+
+
+
     return 0;
 }
 
 
-
-
-//////////////////////////////////////////////////////////////
-// makeTexture
-/////////////////////////////////////////////////////////////
-
-cudaTextureObject_t makeTexture( cudaArray *cuArray )
-{
-    // Specify texture
-    struct cudaResourceDesc resDesc;
-    memset(&resDesc, 0, sizeof(resDesc));
-    resDesc.resType = cudaResourceTypeArray;
-    resDesc.res.array.array = cuArray;
-
-    // Specify texture object parameters
-    struct cudaTextureDesc texDesc;
-    memset(&texDesc, 0, sizeof(texDesc));
-    texDesc.addressMode[0]   = cudaAddressModeBorder;// out of bounds = 0
-    texDesc.addressMode[1]   = cudaAddressModeBorder;
-    texDesc.filterMode       = cudaFilterModePoint;// nearest neighbor
-    texDesc.readMode         = cudaReadModeElementType;
-    texDesc.normalizedCoords = false;
-
-    // Create texture object
-    cudaTextureObject_t texObj = 0;
-    cudaCreateTextureObject(&texObj, &resDesc, &texDesc, NULL);
-
-    return texObj;
- 
-}
-
-
-//////////////////////////////////////////////////////////////
-// getConfig
-/////////////////////////////////////////////////////////////
-
-bool getConfig( int &nrOfImages, float camera1[], float camera2[], float states[], float worldPoints[] )
-{
-    std::ifstream fd( "./data/config.txt" );
-
-    if ( !fd.is_open() )
-    {
-	std::cerr << "Could not open config file\n";
-	return false;
-    }
-
-    // read nr of images
-    fd >> nrOfImages;
-
-    // read camera 1
-    for (int i = 0; i < 12; ++i)
-	fd >> camera1[i];
-
-    // read camera 2
-    for (int i = 0; i < 12; ++i)
-	fd >> camera2[i];
-
-    // read states
-    for (int i = 0; i < N_STATES; ++i)
-	fd >> states[i];
-    
-    // read world points
-    for (int i = 0; i < N_WPOINTS*3; ++i)
-	fd >> worldPoints[i];
-
-    bool status = !fd.fail();
-
-    fd.close();
-    return status;
-
-}
