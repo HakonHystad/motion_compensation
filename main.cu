@@ -10,6 +10,8 @@
 #include "filter//utilities.cuh"
 #include "filter/filter.cuh"
 
+#include "robot/robot.h"
+
 #define _TEST_FILTER_
 
 #ifdef _TEST_FILTER_
@@ -38,8 +40,14 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
 
     // x,y,z, x',y',z',a,b,g,a',b',g'
+    #ifdef _TEST_FILTER_
+    float initialStates[N_STATES] = {-0.5, 5.0, 1.0, 0.0324, 0.0, 0.0,\
+				     0.261799, 0.261799, 0.0, 0.0, 0.0, 0.0};
+    #else
     float initialStates[N_STATES] = {1.6, -1.5, 2, 0.0324, 0, 0,\
 				    0, 0, 0, 0, 0, 0};
+    #endif
+    
     // 0.1m, 0.1m/s, ~5.7 deg, ~5.7deg/s
     float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1,\
 				    0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
@@ -60,12 +68,15 @@ int main(int argc, char *argv[])
     // set up image loading
     /////////////////////////////////////////////////////////////
     uchar *image;
-    #ifdef _TEST_FILTER_
-    cv::Mat im = cv::imread( "./data/seq_500.png", CV_LOAD_IMAGE_GRAYSCALE );
-    image = im.data;
-    #endif
-    /* end testing */
+    
+    // make pinned memory
     cudaMallocHost( (void**)&image, IM_W*IM_H*sizeof(uchar) );
+
+    #ifdef _TEST_FILTER_
+    cv::Mat im = cv::imread( "./data/seq_1.png", CV_LOAD_IMAGE_GRAYSCALE );
+    std::cout << "size: " << im.total() << std::endl;
+    memcpy(image, im.data, im.total() );
+    #endif
 
     
     cudaArray *cuArray;
@@ -75,12 +86,22 @@ int main(int argc, char *argv[])
     checkCUDAError("malloc array");
     auto texObj = makeTexture( cuArray );
 
+    // put image transfer and motion kernel in separate kernels to get async transfer
+    cudaStream_t memStream = 0;
+    cudaStream_t motionStream = 0;
+    // comment out to run in default stream
+    cudaStreamCreate(&memStream);
+    cudaStreamCreate(&motionStream);
+    checkCUDAError("make stream");
 
     //////////////////////////////////////////////////////////////
-    // make filter instance
+    // make instances
     /////////////////////////////////////////////////////////////
 
     auto sir = Filter( initialStates, initialSigma, worldPoints );
+    auto robot = Robot();
+
+    float pose[6];
 
     //////////////////////////////////////////////////////////////
     // get currect image from buffer
@@ -91,7 +112,6 @@ int main(int argc, char *argv[])
     
     float *camera = d_camera1;// TODO: set which camera took the picture
     
-    // copy to GPU, TODO: asynchrounous
     
     #ifdef _TEST_FILTER_
     std::cout << "=======================================\n";
@@ -104,7 +124,7 @@ int main(int argc, char *argv[])
     start = get_current_time();
     #endif
     
-    cudaMemcpyToArray(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice);
+    cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
     checkCUDAError("mempcy texture");
 	
     // TODO: get timestamp
@@ -116,7 +136,7 @@ int main(int argc, char *argv[])
     /////////////////////////////////////////////////////////////
 
     
-    sir.update(prevTime, newTime, camera, texObj );
+    sir.update(prevTime, newTime, camera, texObj, motionStream );
 
     prevTime = newTime;
 
@@ -124,9 +144,9 @@ int main(int argc, char *argv[])
 
     sir.mean();
 
-    cudaThreadSynchronize();
 
     #ifdef _TEST_FILTER_
+    cudaThreadSynchronize();
     end = get_current_time();
     total += end-start;
     
@@ -134,15 +154,24 @@ int main(int argc, char *argv[])
     std::cout << "Total time: " << total << "s\n";
     #endif
 
+    for (int i = 0; i < 3; ++i)
+	pose[i] = sir[i+X_IDX];
+    for (int i = 0; i < 3; ++i)
+	pose[i+3] = sir[i+ALPHA_IDX];
+
+    // TODO: continue filtering with new images while the processing of states continue
+
+    
+    
     //////////////////////////////////////////////////////////////
     // process new states 
     /////////////////////////////////////////////////////////////
     // TODO: prediction + smoothing?
 
-    // TODO: send pose to robot as x,y,z in mm? and A,B,C in kuka euler coordinates
 
-
-    // TODO: repeat with new image
+    robot.move( pose );
+    
+    
 
 
 
@@ -155,7 +184,9 @@ int main(int argc, char *argv[])
     cudaFree( d_camera2 );
     cudaFreeArray( cuArray );
     cudaDestroyTextureObject(texObj);
-
+    cudaStreamDestroy(memStream);
+    cudaStreamDestroy(motionStream);
+    cudaFreeHost(image);
 
 
     return 0;

@@ -112,7 +112,7 @@ public:
 //////////////////////////////////////////////////////////////
 // update motion and observation
 /////////////////////////////////////////////////////////////
-    void update( float startTime, float endTime, const float *d_camera, cudaTextureObject_t texObj );
+    void update( float startTime, float endTime, const float *d_camera, cudaTextureObject_t texObj, cudaStream_t motionStream=0 );
 
 //////////////////////////////////////////////////////////////
 // resample

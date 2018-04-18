@@ -106,7 +106,7 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
 //////////////////////////////////////////////////////////////
 // update motion and observation
 /////////////////////////////////////////////////////////////
-void Filter::update( float startTime, float endTime, const float *d_camera, cudaTextureObject_t texObj )
+void Filter::update( float startTime, float endTime, const float *d_camera, cudaTextureObject_t texObj, cudaStream_t motionStream/*=0*/ )
 {
     float interval = endTime - startTime;
 
@@ -114,9 +114,9 @@ void Filter::update( float startTime, float endTime, const float *d_camera, cuda
     dim3 blocksPerGrid( N_PARTICLES/PARTICLE_BLK_SZ, 1, 1 );
     dim3 threadsPerBlock( PARTICLE_BLK_SZ, 1, 1);
 
-    motion_kernel<<< blocksPerGrid, threadsPerBlock >>>( d_rngStates, interval, states );
-
-    cudaThreadSynchronize();
+    motion_kernel<<< blocksPerGrid, threadsPerBlock, 0, motionStream >>>( d_rngStates, interval, states );
+    
+//    cudaThreadSynchronize();
 
     
     dim3 blocksPerGrid2( N_PARTICLES, 1, 1 );
