@@ -5,6 +5,9 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include "filter/settings.cuh"
 #include "filter//utilities.cuh"
@@ -72,12 +75,6 @@ int main(int argc, char *argv[])
     // make pinned memory
     cudaMallocHost( (void**)&image, IM_W*IM_H*sizeof(uchar) );
 
-    #ifdef _TEST_FILTER_
-    cv::Mat im = cv::imread( "./data/seq_1.png", CV_LOAD_IMAGE_GRAYSCALE );
-    std::cout << "size: " << im.total() << std::endl;
-    memcpy(image, im.data, im.total() );
-    #endif
-
     
     cudaArray *cuArray;
     // Allocate CUDA array in device memory
@@ -95,84 +92,124 @@ int main(int argc, char *argv[])
     checkCUDAError("make stream");
 
     //////////////////////////////////////////////////////////////
-    // make instances
+    // create instances
     /////////////////////////////////////////////////////////////
 
     auto sir = Filter( initialStates, initialSigma, worldPoints );
     auto robot = Robot();
 
-    float pose[6];
+
+    // launch a separate thread for the robot processing
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    lock.unlock();
+    std::condition_variable convar;
+    std::thread robotThread{robotThreadFnc, std::ref(mtx), std::ref(convar), std::ref(robot)};
+
 
     //////////////////////////////////////////////////////////////
-    // get currect image from buffer
+    // filter loop
     /////////////////////////////////////////////////////////////
+    // temp counter
+    int k= 1;
+    while(true)
+    {
+#ifdef _TEST_FILTER_
+	std::string imageName = "./data/seq_" + std::to_string(k) + ".png";
+	cv::Mat im = cv::imread( imageName, CV_LOAD_IMAGE_GRAYSCALE );
+	memcpy(image, im.data, im.total() );
+#endif
 
-    // TODO: image acquisition
-    // image = something
-    
-    float *camera = d_camera1;// TODO: set which camera took the picture
-    
-    
-    #ifdef _TEST_FILTER_
-    std::cout << "=======================================\n";
+
 	
-    std::cout << "Timings for " <<  N_PARTICLES << " particles\n";
-    std::cout << "---------------------------------------\n";	
-
-    double start, end, total=0;
-    
-    start = get_current_time();
-    #endif
-    
-    cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
-    checkCUDAError("mempcy texture");
+#ifdef _TEST_FILTER_
+	std::cout << "=======================================\n";
 	
-    // TODO: get timestamp
-    float prevTime = 0;
-    float newTime = 1.0f/60;
+	std::cout << "Timings for " <<  N_PARTICLES << " particles\n";
+	std::cout << "---------------------------------------\n";	
 
-    //////////////////////////////////////////////////////////////
-    // perform filtering 
-    /////////////////////////////////////////////////////////////
+	double start, end, total=0;
+    
+	start = get_current_time();
+#endif
+
 
     
-    sir.update(prevTime, newTime, camera, texObj, motionStream );
+	//////////////////////////////////////////////////////////////
+	// get currect image from buffer
+	/////////////////////////////////////////////////////////////
 
-    prevTime = newTime;
-
-    sir.resample();
-
-    sir.mean();
-
-
-    #ifdef _TEST_FILTER_
-    cudaThreadSynchronize();
-    end = get_current_time();
-    total += end-start;
+	// TODO: image acquisition
+	// image = something
     
-    std::cout << "---------------------------------------\n";	
-    std::cout << "Total time: " << total << "s\n";
-    #endif
+	float *camera = d_camera1;// TODO: set which camera took the picture
 
-    for (int i = 0; i < 3; ++i)
-	pose[i] = sir[i+X_IDX];
-    for (int i = 0; i < 3; ++i)
-	pose[i+3] = sir[i+ALPHA_IDX];
+	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
+	checkCUDAError("mempcy texture");
+	
+	// TODO: get timestamp
+	float prevTime = 0;
+	float newTime = 1.0f/60;
 
-    // TODO: continue filtering with new images while the processing of states continue
+
+	// something is wrong, terminate threads nicely
+	if(k++==3)// temp termination
+	{
+	    lock.lock();
+	    robot.end();
+	    lock.unlock();
+	    convar.notify_all();
+	    break;
+	    // TODO: finish abort cases such as broken camera com etc.
+        }
+	
+	//////////////////////////////////////////////////////////////
+	// perform filtering 
+	/////////////////////////////////////////////////////////////
 
     
-    
-    //////////////////////////////////////////////////////////////
-    // process new states 
-    /////////////////////////////////////////////////////////////
-    // TODO: prediction + smoothing?
+	sir.update(prevTime, newTime, camera, texObj, motionStream );
+
+	prevTime = newTime;
+
+	sir.resample();
+
+	sir.mean();
+
+	cudaThreadSynchronize();
+
+	//////////////////////////////////////////////////////////////
+	// pass on estimated states
+	/////////////////////////////////////////////////////////////
 
 
-    robot.move( pose );
-    
-    
+	// grab mutex
+	lock.lock();
+	
+	for (int i = 0; i < 3; ++i)
+	    robot.pose[i] = sir[i+X_IDX];
+	for (int i = 0; i < 3; ++i)
+	    robot.pose[i+3] = sir[i+ALPHA_IDX];
 
+	// release mutex and let robot thread know to continue
+	lock.unlock();
+	convar.notify_all();
+
+
+#ifdef _TEST_FILTER_
+	end = get_current_time();
+	total += end-start;
+    
+	std::cout << "---------------------------------------\n";	
+	std::cout << "Total time: " << total << "s\n";
+	std::cout << "States: ";
+	for (int i = 0; i < N_STATES; ++i)
+	    std::cout << sir[i] << " ";
+	std::cout << std::endl;
+#endif
+    }
+
+    robotThread.join();
 
 
     //////////////////////////////////////////////////////////////
@@ -191,5 +228,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
 

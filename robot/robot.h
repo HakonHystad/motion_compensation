@@ -7,6 +7,9 @@
 // dependencies
 /////////////////////////////////////////////////////////////
 #include <cmath>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 
 //////////////////////////////////////////////////////////////
@@ -21,7 +24,7 @@ public:
     Robot(){};
     ~Robot(){};
 
-    void move( float pose[] )
+    void move(  )
 	{
 	    // convert to kuka A,B,C
 	    XYZ_to_kuka( &pose[3] );
@@ -29,15 +32,30 @@ public:
 
 	    // TODO: send pose
 	}
+    void end()
+	{
+	    // TODO: release com
+	    ended = true;
+	}
+
+    bool hasEnded()
+	{
+	    return ended;
+	}
+
+
 
 
     // Kuka uses ZYX angles for A,B,C
-    void XYZ_to_kuka( float euler[] );    
+    void XYZ_to_kuka( float euler[] );
+
+    // yeah its public..
+    float pose[6];
 
 protected:
 
 private:
-
+    bool ended = false;
 
 };
 
@@ -63,6 +81,35 @@ void Robot::XYZ_to_kuka( float euler[] )
 	    
     B = atan2( c1*c3*s2-s1*s3, c2*c3*cA + ( c1*s3 + c3*s1*s2 )*sA );
     C = atan2( s2*sA+c2*s1*cA, (c1*c3-s1*s2*s3)*cA + c2*s3*sA );
+}
+
+
+//////////////////////////////////////////////////////////////
+// async usage of robot
+/////////////////////////////////////////////////////////////
+void robotThreadFnc(std::mutex &mtx, std::condition_variable &convar, Robot &robot)
+{
+    std::unique_lock<std::mutex> lock(mtx);
+    while(true)
+    {
+	// release mutex and wait for signal to grab it
+	convar.wait(lock);
+
+	if( robot.hasEnded() )
+	    break;
+       	    
+	//////////////////////////////////////////////////////////////
+	// process new states 
+	/////////////////////////////////////////////////////////////
+	// TODO: prediction + smoothing?
+
+	robot.move();
+
+//	std::cout << robot.pose[0] << " " << robot.pose[3] << std::endl;
+    
+
+    }
+    lock.unlock();
 }
 
 
