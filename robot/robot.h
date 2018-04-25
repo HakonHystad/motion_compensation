@@ -24,10 +24,11 @@ public:
     Robot(){};
     ~Robot(){};
 
-    void move(  )
+    void move( bool convert = false )
 	{
 	    // convert to kuka A,B,C
-	    XYZ_to_kuka( &pose[3] );
+	    if( convert )
+		XYZ_to_kuka( &pose[3] );
 	    // NB: m -> mm
 
 	    // TODO: send pose
@@ -103,7 +104,7 @@ void robotThreadFnc(std::mutex &mtx, std::condition_variable &convar, Robot &rob
 	/////////////////////////////////////////////////////////////
 	// TODO: prediction + smoothing?
 
-	robot.move();
+	robot.move(true);
 
 //	std::cout << robot.pose[0] << " " << robot.pose[3] << std::endl;
     

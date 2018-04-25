@@ -261,6 +261,22 @@ fprintf('And point them at [ %.2f, %.2f, %.2f ]\n', trajectory(1,1), 0, t1(end) 
 generateKRL(t1, t2, [trajectory(1,1), 0, t1(end)], joints);
 save('./data/scene.mat', 'dist', 'poses','final_poses', 'Tcam1', 'sphereCenter', 'trajectory','Tcam2', 'camera');
 
+% additionally save poses to file
+fid = fopen('data/calibration_poses.txt', 'wt' );
+
+if fid<0
+    error('Could not write calibration poses');
+end
+
+% number of images/poses to take
+fprintf(fid, '%d\n', length(final_poses) );
+% each pose as X Y Z A B C
+for i=1:length(final_poses)
+    fprintf(fid, '%.4f %.4f %.4f %.4f %.4f %.4f\n', final_poses{i}(1:3,4), rad2deg( rotm2eul( final_poses{i}(1:3,1:3), 'ZYX' ) ) );
+end
+
+fclose(fid);
+
 hold off
 
 function h = makeViewPath( position, camera, pathSz, color )

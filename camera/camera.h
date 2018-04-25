@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <string>
-#include <unistd.h>
+#include <unistd.h>// sleep
 #include <fstream>
 
 #include "cameraError.h"
@@ -42,7 +42,8 @@ public:
 	    // open cameras for use
 	    openCameras();
 
-	    
+	    // configure them to intended use
+	    configureCameras();
 	}
    
     ~Camera()
@@ -87,8 +88,10 @@ public:
 		// limit datarate to ensure the 2 camera setup works without loss
 		/* To calculate the required minimum StreamBytesPerSecond setting for a
 		 * camera in any image mode, use the following formula:
-		 * StreamBytesPerSecond = Height x Width x FrameRate x Bytes per Pixel */
-		int datarate = 768*1024*35*1;
+		 * StreamBytesPerSecond = Height x Width x FrameRate x Bytes per Pixel
+		 115,000,000 bytes/s is the typical maximum data rate for a GigE port. Beyond this
+		 setting, some network cards will drop packets. */
+		int datarate = IM_H*IM_W*MAX_FPS*1;// (768*1024*40*1)*2 = 63MB/s;
 
 		setDataRate( m_cam1, feature, datarate );
 		setDataRate( m_cam2, feature, datarate );
@@ -159,10 +162,20 @@ public:
 
     void shutdown()
 	{
-	    std::cout << "shut down?\n";
-	    
-	    std::cout << m_system.Shutdown() << std::endl;
-	    std::cout << "shut down\n";
+	    m_cam1->Close();
+	    m_cam2->Close();
+	    m_system.Shutdown();
+	    std::cout << "shut down camera\n";
+	}
+
+    std::string getSerial( int cameraNr )
+	{
+	    if( cameraNr == 1 )
+		return m_camID1;
+	    else if( cameraNr == 2 )
+		return m_camID2;
+	    else
+		return "ERROR";
 	}
 
 
