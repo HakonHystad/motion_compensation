@@ -1,11 +1,13 @@
+function world_calibration( squareSize, improve)
+
 %% calibration routine
 addpath('./matlab_support');
 
 load './data/scene.mat'
-final_poses = final_poses(1:19);
+final_poses = final_poses(1:15);
 %% configuration
-improve = true;% use proposed alogrithm to improve transformations
-squareSize = 0.14;  % in units of 'm'
+% improve = true;% use proposed alogrithm to improve transformations
+% squareSize = 0.14;  % in units of 'm'
 
 imageBaseName = './data/calibrate_';% path and start of filename to images
 imageExtension = '.png';
@@ -107,3 +109,5 @@ fclose(fid);
 %% visualize
 % Visualize pattern locations
 h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
+
+end
