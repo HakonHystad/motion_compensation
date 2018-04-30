@@ -69,6 +69,11 @@ public:
 			      << m_camID2.c_str() << std::endl;
 
 	    }
+	    else if( cameras.size() == 1 )
+	      {
+		cameras[0]->GetSerialNumber( m_camID1 );
+		std::cout << "Found one camera: " << m_camID1.c_str() << std::endl;
+	      }
 	    else
 		m_err( VmbErrorNotFound, "findCameras" );
 
@@ -82,7 +87,7 @@ public:
 	}
 
     void configureCameras()
-	{
+    {
 	        FeaturePtr feature;
 
 		// limit datarate to ensure the 2 camera setup works without loss
@@ -101,38 +106,51 @@ public:
 
 	}
 
-    bool startPTP( int timeout = 10 )
-	{
-	    FeaturePtr feature;
-	    enablePTP( m_cam1, feature, "master" );
-	    enablePTP( m_cam2, feature, "slave" );
+    bool startPTP( int timeout = 60 )
+    {
+      
+     	    FeaturePtr feature;
 
-	        std::cout << "Syncing cameras.. ";
+	    m_cam2->GetFeatureByName( "PtpStatus", feature );
+	    std::string status("");
+	    feature->GetValue( status );
 
-		m_cam2->GetFeatureByName( "PtpStatus", feature );
-		std::string status("");
-	
-		int i;
-
-		for (i = 0; i < 2*timeout; ++i)
-		{
-		    sleep(0.5);
-		    // poll status
-		    feature->GetDisplayName( status );
-		    std::cout << status << std::endl;// TODO remove once tested
-
-		    if( status.compare("Slave") == 0 )
-			break;
-		}
-	
-		if( i==2*timeout )
-		{
-		    std::cerr << "Could not sync\n";
-		    return false;
-		}
-
-		std::cout << "Done\n";
+	    if( status.compare("Off") != 0 )
+	      {
+		std::cout << "Cameras already running PTP\n";
 		return true;
+	      }
+	    
+	    enablePTP( m_cam1, feature, "Master" );
+	    enablePTP( m_cam2, feature, "Slave" );
+
+	    std::cout << "Syncing cameras.. ";
+
+	    
+	
+	    int i;
+
+	    for (i = 0; i < timeout; ++i)
+	      {
+		sleep(1);
+		// poll status
+		feature->GetValue( status );
+
+		std::cout << " " << status << std::flush;
+		    
+		if( status.compare("Slave") == 0 )
+		  break;
+	      }
+	    std::cout << std::endl;
+	
+	    if( i==timeout )
+	      {
+		std::cerr << "Could not sync\n";
+		return false;
+	      }
+
+	    std::cout << "Done\n";
+	    return true;
 
 	}
 
@@ -147,7 +165,7 @@ public:
 	    return ( err == VmbErrorSuccess );
 	}
 
-    int getTimestamp()
+    unsigned long long getTimestamp()
 	{
 	    VmbUint64_t time;
 	    auto err = m_frame->GetTimestamp( time );

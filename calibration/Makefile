@@ -3,7 +3,7 @@ EXE=capture.out
 objects= build/main.o
 
 # change to installation folder of vimba
-VIMBA_DIR = /opt/Vimba_2_1
+VIMBA_DIR = /home/minion/Nedlastinger/Vimba_2_0
 # remember to copy  $(VIMBA_DIR)/VimbaCPP/DynamicLib/x86_64bit/*.so to /usr/lib
 LIBS = -lVimbaCPP -lVimbaC
 

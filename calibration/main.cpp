@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
     HH::Camera *cam = NULL;
     try
     {
-	cam = new HH::Camera( image, IM_H*IM_W );
+      //      cam = new HH::Camera( image, IM_H*IM_W, "02-2165A-07078", "02-2165A-07077" );
+      cam = new HH::Camera( image, IM_H*IM_W );
     }catch(VmbErrorType)
     {
 	exit( EXIT_FAILURE );
@@ -52,9 +53,10 @@ int main(int argc, char *argv[])
     /////////////////////////////////////////////////////////////
 
     // not strictly neccessary for calibration, but a test for further use
+    
     if( !cam->startPTP() )
 	exit( EXIT_FAILURE );
-
+    
     //////////////////////////////////////////////////////////////
     // capture images 
     /////////////////////////////////////////////////////////////
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
 	    break;
 
 	std::string imageName = "./data/im_" + std::to_string(i);
-	std::cout << "Took " << imageName << " at " << cam->getTimestamp() << std::endl;
+	std::cout << "Took " << imageName << "a.pgm at " << cam->getTimestamp() << std::endl;
 	
 	// save it	
 	if( !writeImage( imageName + "a.pgm", image ) )
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
 	if( !cam->capture( 2 ) )
 	    break;
 
-	std::cout << "Took " << imageName << " at " << cam->getTimestamp() << std::endl;
+	std::cout << "Took " << imageName << "b.pgm at " << cam->getTimestamp() << std::endl;
 	// and save it
 	if( !writeImage( imageName + "b.pgm", image ) )
 	    break;
