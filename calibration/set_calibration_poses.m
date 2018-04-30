@@ -28,8 +28,8 @@ n_row = 8;% must be even
 boardSize = [ n_row n_col ];% m
 
 boardSz = max(boardSize)*squareSz; % max chessboard size
-cameraHeight = 1.5;% m
-offset_x = 0.5;% m
+cameraHeight = 1;% m
+offset_x = 0;% m
 
 
 % field of view
@@ -37,7 +37,7 @@ f_h = K(1,1);% focal length in  vertical pixel units
 f_w = K(2,2);% focal length in  horizontal pixel units
 
 % trajectory is assumed in the y-direction
-trajectoryLength = 3;% m
+trajectoryLength = 2.5;% m
 
 gamma = f_w/w;
 dist = (trajectoryLength/2)*( gamma - 1/(4*gamma) );
@@ -61,8 +61,8 @@ addVisual( chessBoard, 'Mesh', 'board.STL', board_origin );
 
 
 % child to joint transform
-Rboard = roty(90)';
-tboard = [0 0 boardSz/2]';
+Rboard = roty(90)'*rotz(90);
+tboard = [0 0 0.5]';%boardSz/2]';
 Tboard = [ Rboard tboard; 0 0 0 1];
 setFixedTransform(chessBoard.Joint, Tboard );
 addBody( robot, chessBoard, 'tool0' );
@@ -112,7 +112,7 @@ z = r*z + sphereCenter(3);
 
 limx = max( trajectory(1,:) );
 limy = trajectory(2,:);
-limz = max(1,cameraHeight-dist_z/2);% some safe distance above ground level
+limz = max(0.5,cameraHeight-dist_z/2);% some safe distance above ground level
 
 
 mask = x>limx & y<max(limy) & y>min(limy) & z>limz & z<height;
@@ -183,10 +183,13 @@ ik = robotics.InverseKinematics('RigidBodyTree',robot);
 % start with bent arm
 qn = homeConfiguration(robot);
 tmp = num2cell( [qn.JointPosition] );
-tmp{2} = pi/6;
-tmp{3} = -pi/6;
+tmp{2} = -pi/2;
+tmp{3} = pi/2;
+tmp{5} = pi/2;
+tmp{6} = pi;
 [qn.JointPosition] = tmp{:};
-% show(robot, qn,'PreservePlot',false);
+show(robot, qn,'PreservePlot',false);
+% return;
 
 link2_org = stlread('robot/link_2.stl');
 link3_org = stlread('robot/link_3.stl');
@@ -194,7 +197,7 @@ link3_org = stlread('robot/link_3.stl');
 link2 = link2_org;
 link3 = link3_org;
 
-
+len = length( poses );
 joints = cell(1,len);
 final_poses = cell(1,len);
 for i=1:len
@@ -205,7 +208,7 @@ for i=1:len
     joints{i} = rad2deg( [qn.JointPosition] );
     final_poses{i} = getTransform(robot, qn, 'tool0');
     show(robot, qn,'PreservePlot',false);
-    
+
     % make view path
     fov_1 = makeViewPath( positions(i,:)', t1, boardSz*0.7, 'blue' );
     fov_2 = makeViewPath( positions(i,:)', t2, boardSz*0.7, 'green' );
@@ -251,7 +254,8 @@ for i=1:len
         delete(fov_2);
     end
     
-    pause(0.5);
+%     waitforbuttonpress()
+%     pause(0.5);
 end
 
 %% finish
