@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     /////////////////////////////////////////////////////////////
 
     auto sir = Filter( initialStates, initialSigma, worldPoints );
-    auto robot = Robot();
+    auto robot = HH::Robot();
 
 
     // launch a separate thread for the robot processing

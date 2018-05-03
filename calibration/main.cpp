@@ -61,7 +61,15 @@ int main(int argc, char *argv[])
     // capture images 
     /////////////////////////////////////////////////////////////
 
-    auto robot = Robot();
+    HH::Robot robot;
+    double pose[6];
+    std::ofstream fd_pose("./data/measured_poses.txt", std::ios::trunc );
+
+    if( !fd_pose.is_open() )
+    {
+	std::cerr << "Could not open poses\n";
+	exit( EXIT_FAILURE );
+    }
 
     int i = 0;
     for (i = 0; i < n_images; ++i)
@@ -74,11 +82,18 @@ int main(int argc, char *argv[])
 	for (int j = 0; j < 6; ++j)
 	    fd >> robot.pose[j];// TODO? error handling
 	
-	// send move command
+	// start moving
 	robot.move();
 	
 	// wait for it to finish
-	sleep( 1 );// TODO: something about this
+	while( !robot.poseReached() )
+	    sleep( 0.2 );
+
+	// save the measured pose
+	robot.getPose( pose );
+	for (int j = 0; j < 6; ++j)
+	    fd_pose << pose[j] << " ";
+	fd_pose << std::endl;
 
 	//////////////////////////////////////////////////////////////
 	// acquire images
@@ -106,6 +121,7 @@ int main(int argc, char *argv[])
 	
     }
 
+    fd_pose.close();
     fd.close();
 
     if( i != n_images )

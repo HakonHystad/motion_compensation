@@ -19,7 +19,7 @@ K = camera(1:3,1:3);
 w = 1024;% pixels
 h = 768;% pixels
 
-resolution = 55;% controls how many configurations are made, hard to say the end result
+resolution = 60;% controls how many configurations are made, hard to say the end result
 
 squareSz = 0.03;% m
 n_col = 10;% must be even
@@ -29,7 +29,7 @@ boardSize = [ n_row n_col ];% m
 
 boardSz = max(boardSize)*squareSz; % max chessboard size
 cameraHeight = 1;% m
-offset_x = 0;% m
+offset_x = 0.2;% m
 
 
 % field of view
@@ -100,7 +100,7 @@ a = trajectoryLength/2 - boardSz/2;% - 0.25;% within half of hanger trajectory
 h_ = a*tand(10);% restrict the max angle between camera axis and chess board
 
 r = (a^2 + h_^2)/(2*h_);% sphere radius
-sphereCenter = [ ( h_+dist )-r + offset_x, mean( trajectory(2,:) ), cameraHeight ];
+sphereCenter = [ ( h_+dist )-r, mean( trajectory(2,:) ), cameraHeight ];
 
 
 [x, y, z] = sphere(resolution);% controls resolution
@@ -111,7 +111,8 @@ z = r*z + sphereCenter(3);
 
 
 limx = max( trajectory(1,:) );
-limy = trajectory(2,:);
+% limy = trajectory(2,:);
+limy = [-1 1]*0.92;% hardcoded based on experimental setup
 limz = max(0.5,cameraHeight-dist_z/2);% some safe distance above ground level
 
 
