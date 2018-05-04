@@ -281,7 +281,7 @@ final_poses = cellfun( func, final_poses, 'UniformOutput', false );
 
 for i=1:length(final_poses)
     ABC = rad2deg( rotm2eul( final_poses{i}(1:3,1:3), 'ZYX' ) );
-    fprintf(fid, '%.4f %.4f %.4f %.4f %.4f %.4f\n', final_poses{i}(1:3,4), ABC );
+    fprintf(fid, '%.4f %.4f %.4f %.4f %.4f %.4f\n', final_poses{i}(1:3,4)*1000, ABC );
 end
 
 fclose(fid);
