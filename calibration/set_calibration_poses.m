@@ -276,8 +276,10 @@ end
 % number of images/poses to take
 fprintf(fid, '%d\n', length(final_poses) );
 % each pose as X Y Z A B C
+ABC = rad2deg( rotm2eul( final_poses{i}(1:3,1:3), 'ZYX' ) );
+ABC(1) = ABC(1) - 90;% bodge because of kukavarproxy nullframe
 for i=1:length(final_poses)
-    fprintf(fid, '%.4f %.4f %.4f %.4f %.4f %.4f\n', final_poses{i}(1:3,4), rad2deg( rotm2eul( final_poses{i}(1:3,1:3), 'ZYX' ) ) );
+    fprintf(fid, '%.4f %.4f %.4f %.4f %.4f %.4f\n', final_poses{i}(1:3,4), ABC );
 end
 
 fclose(fid);
