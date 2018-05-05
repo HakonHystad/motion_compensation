@@ -62,7 +62,7 @@ addVisual( chessBoard, 'Mesh', 'board.STL', board_origin );
 
 % child to joint transform
 Rboard = roty(90)'*rotz(90);
-tboard = [0 0 0.5]';%boardSz/2]';
+tboard = [0 0 0.25]';%boardSz/2]';
 Tboard = [ Rboard tboard; 0 0 0 1];
 setFixedTransform(chessBoard.Joint, Tboard );
 addBody( robot, chessBoard, 'tool0' );
@@ -143,23 +143,28 @@ len = length(x);
 poses = cell( len, 1 );
 plot3(target(1), target(2), target(3),'ro', 'Markersize', 10);
 
-angleAxis = vrrotmat2vec( Rboard );
-axis_ = angleAxis;
 
 for i=1:len
     
-%     w_ = target-positions(i,:); w_ = w_'./norm(w_);
+    
+    n = target-positions(i,:); n = n'./norm(n);% get z-axis/ tangent plane normal
+    v = [0 0 1]' - n(3)*n; v = v./norm(v);% project y-axis into plane
+    u = cross( v, n );% calc last dir
+    R = [u v n];
+    
+    % add random offset of angle based on y-position
+    angleAxis = vrrotmat2vec( R );
+   
+    maxOffset = deg2rad(25 - abs(positions(i,2))*(15/maxY) );    
+    angleAxis(end) = angleAxis(end) + genRandomOffset( maxOffset );
+    
+    R = vrrotvec2mat( angleAxis );
 
     T = eye(4);
     T(1:3,4) = positions(i,:)';
-    % aim z-axis at target
-%     angleAxis = vrrotvec([0 0 1], v);
 
-    % add random offset of angle based on y-position
-    maxOffset = deg2rad(25 - abs(positions(i,2))*(15/maxY) );
-%     angleAxis(end) = angleAxis(end) + genRandomOffset( maxOffset );
-    axis_(end) = angleAxis(end) + genRandomOffset( maxOffset );
-    T(1:3,1:3) = vrrotvec2mat( axis_ );
+
+    T(1:3,1:3) = R;
     
     hold on
     v = T(1:3,3);
