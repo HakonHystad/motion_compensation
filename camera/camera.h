@@ -171,7 +171,7 @@ public:
 	    auto err = m_frame->GetTimestamp( time );
 
 	    if( err != VmbErrorSuccess )
-		return -1;
+		return 0;
 	    
 	    return time;
 	}

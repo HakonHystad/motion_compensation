@@ -4,13 +4,13 @@ function world_calibration( squareSize, improve)
 addpath('./matlab_support');
 
 load './data/scene.mat'
-final_poses = final_poses(1:15);
+
 %% configuration
 % improve = true;% use proposed alogrithm to improve transformations
 % squareSize = 0.14;  % in units of 'm'
 
-imageBaseName = './data/calibrate_';% path and start of filename to images
-imageExtension = '.png';
+imageBaseName = './data/im_';% path and start of filename to images
+imageExtension = '.pgm';
 
 
 % one camera has images $(imageBaseName)$(i)a$(imageExtension)
@@ -94,7 +94,7 @@ fclose(fid_serials);
 fprintf(fid, '%s\n', ID1 );
 
 for i=1:3
-    fprintf(fid, '%f %f %f %f',camera1(i,:) );
+    fprintf(fid, '%f %f %f %f ',camera1(i,:) );
 end
 fprintf(fid, '\n');
 
@@ -102,7 +102,7 @@ fprintf(fid, '\n');
 fprintf(fid, '%s\n', ID2 );
 
 for i=1:3
-    fprintf(fid, '%f %f %f %f',camera2(i,:) );
+    fprintf(fid, '%f %f %f %f ',camera2(i,:) );
 end
 
 fclose(fid);

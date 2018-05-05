@@ -85,34 +85,59 @@ cudaTextureObject_t makeTexture( cudaArray *cuArray )
 // getConfig
 /////////////////////////////////////////////////////////////
 
-bool getConfig( float camera1[], float camera2[], float worldPoints[] )
+bool getConfig( float camera1[], float camera2[], float worldPoints[], std::string &camID1, std::string &camID2 )
 {
-    std::ifstream fd( "./config.txt" );
 
-    if ( !fd.is_open() )
+    bool status = false;
+
     {
-	std::cerr << "Could not open config file\n";
-	return false;
+	std::ifstream fd( "./data/camera_parameters.txt" );
+
+	if ( !fd.is_open() )
+	{
+	    std::cerr << "Could not open camera parameters file\n";
+	    return false;
+	}
+
+
+	// read camera id 1
+	fd >> camID1;
+    
+	// read camera 1
+	for (int i = 0; i < 12; ++i)
+	    fd >> camera1[i];
+
+	// read camera id 1
+	fd >> camID2;
+
+	// read camera 2
+	for (int i = 0; i < 12; ++i)
+	    fd >> camera2[i];
+
+	status = !fd.fail();
+	fd.close();
     }
 
+    {
+	// read world points
+	std::ifstream fd( "./data/config.txt" );
 
-    // read camera 1
-    for (int i = 0; i < 12; ++i)
-	fd >> camera1[i];
+	if ( !fd.is_open() )
+	{
+	    std::cerr << "Could not open config file\n";
+	    return false;
+	}
 
-    // read camera 2
-    for (int i = 0; i < 12; ++i)
-	fd >> camera2[i];
     
-    // read world points
-    for (int i = 0; i < N_WPOINTS*3; ++i)
-	fd >> worldPoints[i];
+	for (int i = 0; i < N_WPOINTS*3; ++i)
+	    fd >> worldPoints[i];
 
-    bool status = !fd.fail();
+	status &= !fd.fail();
+	fd.close();
 
-    fd.close();
+    }
     return status;
-
+    
 }
 
 
