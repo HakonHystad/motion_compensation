@@ -142,18 +142,29 @@ maxY = max(positions(:,2));
 len = length(x);
 poses = cell( len, 1 );
 plot3(target(1), target(2), target(3),'ro', 'Markersize', 10);
+
+angleAxis = vrrotmat2vec( Rboard );
+axis_ = angleAxis;
+
 for i=1:len
     
-    v = target-positions(i,:); v = v./norm(v);
+%     w_ = target-positions(i,:); w_ = w_'./norm(w_);
 
     T = eye(4);
     T(1:3,4) = positions(i,:)';
     % aim z-axis at target
-    angleAxis = vrrotvec([0 0 1], v);
+%     angleAxis = vrrotvec([0 0 1], v);
+
     % add random offset of angle based on y-position
-    maxOffset = deg2rad(30 - abs(positions(i,2))*(25/maxY) );
-    angleAxis(end) = angleAxis(end) + genRandomOffset( maxOffset );
-    T(1:3,1:3) = vrrotvec2mat( angleAxis );
+    maxOffset = deg2rad(25 - abs(positions(i,2))*(15/maxY) );
+%     angleAxis(end) = angleAxis(end) + genRandomOffset( maxOffset );
+    axis_(end) = angleAxis(end) + genRandomOffset( maxOffset );
+    T(1:3,1:3) = vrrotvec2mat( axis_ );
+    
+    hold on
+    v = T(1:3,3);
+    quiver3(positions(i,1),positions(i,2),positions(i,3), v(1),v(2),v(3))
+
     
     poses{i} = T;
   
@@ -205,7 +216,7 @@ for i=1:len
     
     collision = zeros(2, 2);% 2 fovs, 2 links
 
-    qn = ik('board',poses{i},[0 0.6 0.6 1 1 1],qn);
+    qn = ik('board',poses{i},[0.6 0.6 0.6 1 1 1],qn);
     joints{i} = rad2deg( [qn.JointPosition] );
     final_poses{i} = getTransform(robot, qn, 'tool0');
     show(robot, qn,'PreservePlot',false);
@@ -255,7 +266,7 @@ for i=1:len
         delete(fov_2);
     end
     
-%     waitforbuttonpress()
+    waitforbuttonpress()
 %     pause(0.5);
 end
 
