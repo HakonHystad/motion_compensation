@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
     // capture images 
     /////////////////////////////////////////////////////////////
 
+    std::cout << "Starting robot\n";
+    
     HH::Robot robot;
     double pose[6];
     std::ofstream fd_pose("./data/measured_poses.txt", std::ios::trunc );
@@ -79,8 +81,13 @@ int main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////
 
 	// get pose from file
+      std::cout << "Moving to ";
 	for (int j = 0; j < 6; ++j)
+	  {
 	    fd >> robot.pose[j];// TODO? error handling
+	    std::cout << robot.pose[j] << " ";
+	  }
+	std::cout << std::endl;
 	
 	// start moving
 	robot.move();

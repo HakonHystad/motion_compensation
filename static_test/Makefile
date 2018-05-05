@@ -2,7 +2,8 @@
 
 EXE=test_filter.out
 
-VIMBA_DIR = /opt/Vimba_2_1
+#VIMBA_DIR = /opt/Vimba_2_1
+VIMBA_DIR = /home/minion/Nedlastinger/Vimba_2_0
 
 CU=nvcc
 CXX = g++

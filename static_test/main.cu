@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     if (!getConfig( camera1, camera2, worldPoints, camID1, camID2) )
 	exit( EXIT_FAILURE );
 
-    float initialStates[N_STATES] = {1.5, 0.92, 1.0, 0.0324, 0, 0,	\
-				    0, 0, 0, 0, 0, 0};
+    float initialStates[N_STATES] = {1.5, 0.92, 2.0, 0.0324, 0, 0,	\
+				    3.1415, 0, 0, 0, 0, 0};
     
     // 0.1m, 0.01m/s, ~5.7 deg, ~5.7deg/s
     float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,\
@@ -104,8 +104,13 @@ int main(int argc, char *argv[])
     for (int i = 0; i < 3; ++i)
 	robot.pose[i+3] = initialStates[i+ALPHA_IDX];
 
+	std::cout << "Initiating at ";
+	for( int i = 0; i<6; i++ )
+	     std::cout << robot.pose[i] << " ";
+	std::cout << std::endl;
+
     // move to start position
-    robot.move();
+    robot.move(true);
     // wait for it to finish
     while( !robot.poseReached() )
 	sleep( 0.2 );

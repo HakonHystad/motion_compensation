@@ -51,9 +51,11 @@ public:
 	    m_kukaPose.x = tmp[0];
 	    m_kukaPose.y = tmp[1];
 	    m_kukaPose.z = tmp[2];
-	    m_kukaPose.a = tmp[3];
-	    m_kukaPose.b = tmp[4];
-	    m_kukaPose.c = tmp[5];
+	    m_kukaPose.a = tmp[3]*(180.0/3.1415926535);
+	    m_kukaPose.b = tmp[4]*(180.0/3.1415926535);
+	    m_kukaPose.c = tmp[5]*(180.0/3.1415926535);
+
+	    std::cout << m_kukaPose.toString() << std::endl;
 
 	    m_kuka.GoToPosition( m_kukaPose );
 	    
