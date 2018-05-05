@@ -1,5 +1,6 @@
 
 #define MAX_FPS 40
+#define _TEST_FILTER_
 
 //////////////////////////////////////////////////////////////
 // dependencies
@@ -140,6 +141,13 @@ int main(int argc, char *argv[])
     robot.pose[1] -= 2*initialStates[1];
     robot.move(true);
 
+    int currentCam = 1;
+    float *camera;
+    
+    cam->capture( 2 );// to get timestamp
+    float prevTime = (float)cam->getTimestamp()/1e9;
+    float newTime = 1.0f/60;
+
 
     while(!robot.poseReached())
     {
@@ -164,15 +172,24 @@ int main(int argc, char *argv[])
 
 	// TODO: image acquisition
 	// image = something
-    
-	float *camera = d_camera1;// TODO: set which camera took the picture
+	cam->capture( currentCam );
+
+	if( currentCam == 1 )
+	{
+	    camera = d_camera1;// TODO: set which camera took the picture
+	    currentCam = 2;
+	}
+	else
+	{
+	    camera = d_camera2;
+	    currentCam = 1;
+	}
 
 	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
 	checkCUDAError("mempcy texture");
 	
 	// TODO: get timestamp
-	float prevTime = 0;
-	float newTime = 1.0f/60;
+	newTime = (float)cam->getTimestamp()/1e9;
 
 	// save the measured pose
 	robot.getPose( pose );
@@ -187,6 +204,7 @@ int main(int argc, char *argv[])
 
     
 	sir.update(prevTime, newTime, camera, texObj, motionStream );
+	prevTime = newTime;
 
 	prevTime = newTime;
 
