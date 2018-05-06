@@ -10,7 +10,7 @@ typedef unsigned char uchar;
 #define N_PARTICLES ROUND_TO_BLK_SZ( INITIAL_N_PARTICLES )
 #define N_STATES 12
 #define STEP_SZ 0.003f
-#define N_WPOINTS 5
+#define N_WPOINTS 4
 #define N_LINE_SAMPLES 32
 
 #define PARTICLE_DBG 0
@@ -33,9 +33,9 @@ typedef unsigned char uchar;
 /* pre-estimated hanger parameters */
 namespace PARAMETER
 {
-    const float LENGTH = 1.0f;// meters
-    const float THETA_ALPHA = 0;
-    const float THETA_BETA = 0;
+    const float LENGTH = 1.0f;// meter
+    const float THETA_ALPHA = 0;// rad
+    const float THETA_BETA = 0;// rad
 }
 
 //////////////////////////////////////////////////////////////
