@@ -29,6 +29,7 @@ public:
 	m_camID2( cameraID2 ),
 	m_frame( new Frame( imageBuffer, bufferSz )  )
 	{
+	    
 	    m_err.setSystem( &m_system );
 	    
 	    // start system
@@ -199,17 +200,18 @@ public:
 
 
 protected:
+    CameraPtr m_cam1;
+    CameraPtr m_cam2;
 
+    CameraError m_err;
 private:
 
     VimbaSystem &m_system;
-    CameraError m_err;
+
 
     std::string m_camID1;
     std::string m_camID2;
 
-    CameraPtr m_cam1;
-    CameraPtr m_cam2;
 
     FramePtr m_frame;
 

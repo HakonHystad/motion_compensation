@@ -1,6 +1,7 @@
 
 #define MAX_FPS 40
 #define _TEST_FILTER_
+//#define _WITH_ROBOT_
 
 //////////////////////////////////////////////////////////////
 // dependencies
@@ -9,13 +10,14 @@
 #include <iostream>
 #include <string>
 #include <unistd.h>
+#include <mutex>
 
 #include "../filter/settings.cuh"
 #include "../filter//utilities.cuh"
 #include "../filter/filter.cuh"
 
 #include "../robot/robot.h"
-#include "../camera/camera.h"
+#include "../camera/continousCamera.h"
 
 
 
@@ -36,9 +38,13 @@ int main(int argc, char *argv[])
     if (!getConfig( camera1, camera2, worldPoints, camID1, camID2) )
 	exit( EXIT_FAILURE );
 
+#ifdef _WITH_ROBOT_
     float initialStates[N_STATES] = {1.5, 0.92, 2.0, 0.0324, 0, 0,	\
 				    3.1415, 0, 0, 0, 0, 0};
-    
+#else
+    float initialStates[N_STATES] = {1.5, 0, 2.0, 0.0324, 0, 0,	\
+				    3.1415, 0, 0, 0, 0, 0};
+#endif
     // 0.1m, 0.01m/s, ~5.7 deg, ~5.7deg/s
     float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,\
 				    0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
@@ -58,10 +64,13 @@ int main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////
     // set up image loading
     /////////////////////////////////////////////////////////////
-    uchar *image;
+    uchar *image = NULL;
+    uchar *image1;
+    uchar *image2;
     
     // make pinned memory
-    cudaMallocHost( (void**)&image, IM_W*IM_H*sizeof(uchar) );
+    cudaMallocHost( (void**)&image1, IM_W*IM_H*sizeof(uchar) );
+    cudaMallocHost( (void**)&image2, IM_W*IM_H*sizeof(uchar) );
     
     cudaArray *cuArray;
     // Allocate CUDA array in device memory
@@ -78,11 +87,19 @@ int main(int argc, char *argv[])
     cudaStreamCreate(&motionStream);
     checkCUDAError("make stream");
 
-    HH::Camera *cam = NULL;
+    HH::ContinousCamera *cam = NULL;
+    unsigned long long prevTimestamp=0;
+    std::atomic<unsigned long long> newTimestamp(0);
+    
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    lock.unlock();
+    
+    
     try
     {
       //      cam = new HH::Camera( image, IM_H*IM_W, "02-2165A-07078", "02-2165A-07077" );
-	cam = new HH::Camera( image, IM_H*IM_W, camID1, camID2 );
+	cam = new HH::ContinousCamera( image1, image2, IM_H*IM_W, mtx, newTimestamp, image, camID1, camID2 );
     }catch(VmbErrorType)
     {
 	exit( EXIT_FAILURE );
@@ -98,6 +115,8 @@ int main(int argc, char *argv[])
     /////////////////////////////////////////////////////////////
 
     auto sir = Filter( initialStates, initialSigma, worldPoints );
+
+#ifdef _WITH_ROBOT_
     HH::Robot robot;
 
     for (int i = 0; i < 3; ++i)
@@ -115,7 +134,7 @@ int main(int argc, char *argv[])
     // wait for it to finish
     while( !robot.poseReached() )
 	sleep( 0.2 );
-
+#endif
 	
     //////////////////////////////////////////////////////////////
     // filter loop
@@ -136,22 +155,36 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
     }
 
-    std::cout << "starting movement\n";
-
-    robot.pose[1] -= 2*initialStates[1];
-    robot.move(true);
-
-    int currentCam = 1;
-    float *camera;
     
-    cam->capture( 2 );// to get timestamp
-    float prevTime = (float)cam->getTimestamp()/1e9;
+    float *camera = d_camera1;
+    
+    cam->startCapture();// start continous capture
+    float prevTime = 0;
     float newTime = 1.0f/60;
 
+    std::cout << "starting movement\n";
 
+#ifdef _WITH_ROBOT_
+    robot.pose[1] -= 2*initialStates[1];
+    robot.move(true);
+#endif
+
+    // use first image to set initial timestamp.. kind of a hack
+    
+    while( prevTimestamp >= newTimestamp )
+    {
+	// loop until new frame is in
+    }
+    prevTimestamp = newTimestamp;
+    prevTime = (float)prevTimestamp/1e9;
+
+#ifdef _WITH_ROBOT_
     while(!robot.poseReached())
     {
-
+#else
+	while(true)
+	{
+#endif
 	
 #ifdef _TEST_FILTER_
 	std::cout << "=======================================\n";
@@ -170,33 +203,43 @@ int main(int argc, char *argv[])
 	// get currect image from buffer
 	/////////////////////////////////////////////////////////////
 
-	// TODO: image acquisition
-	// image = something
-	cam->capture( currentCam );
-
-	if( currentCam == 1 )
+	
+	while( prevTimestamp >= newTimestamp )
 	{
-	    camera = d_camera1;// TODO: set which camera took the picture
-	    currentCam = 2;
+	    // loop until new frame is in
 	}
-	else
-	{
-	    camera = d_camera2;
-	    currentCam = 1;
-	}
-
+	
+	lock.lock();
+	
+	// maybe should not be async b.c of mutex..
 	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
 	checkCUDAError("mempcy texture");
-	
-	// TODO: get timestamp
-	newTime = (float)cam->getTimestamp()/1e9;
 
+	
+	prevTimestamp = newTimestamp;
+
+	if( image==image1 )
+	    camera = d_camera1;
+	else if( image==image2 )
+	    camera = d_camera2;
+	else
+	{
+	    std::cerr << "Not expected image buffer\n";
+	    break;
+	}
+	
+	lock.unlock();
+	
+	newTime = (float)prevTimestamp/1e9;
+
+	
+#ifdef _WITH_ROBOT_
 	// save the measured pose
 	robot.getPose( pose );
 	for (int j = 0; j < 6; ++j)
 	    fd_pose << pose[j] << " ";
 	fd_pose << std::endl;
-
+#endif
 	
 	//////////////////////////////////////////////////////////////
 	// perform filtering 
@@ -219,8 +262,8 @@ int main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////
 
 
-	for (int i = 0; i < 6; ++i)
-	    fd_calc_pose << sir[i+X_IDX] << " ";
+	for (int i = 0; i < N_STATES; ++i)
+	    fd_calc_pose << sir[i] << " ";
 //	for (int i = 0; i < 3; ++i)
 //	    fd_calc_pose << sir[i+ALPHA_IDX] << " ";
 	fd_calc_pose << std::endl;
@@ -239,6 +282,8 @@ int main(int argc, char *argv[])
 #endif
     }
 
+    cam->stopCapture();
+
 
     //////////////////////////////////////////////////////////////
     // clean up 
@@ -251,8 +296,9 @@ int main(int argc, char *argv[])
     cudaDestroyTextureObject(texObj);
     cudaStreamDestroy(memStream);
     cudaStreamDestroy(motionStream);
-    cudaFreeHost(image);
-
+    cudaFreeHost(image1);
+    cudaFreeHost(image2);
+    
     delete cam;
 
     return 0;
