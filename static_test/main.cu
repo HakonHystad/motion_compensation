@@ -64,13 +64,15 @@ int main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////
     // set up image loading
     /////////////////////////////////////////////////////////////
-    uchar *image = NULL;
+    volatile uchar *image = NULL;
     uchar *image1;
     uchar *image2;
     
     // make pinned memory
     cudaMallocHost( (void**)&image1, IM_W*IM_H*sizeof(uchar) );
     cudaMallocHost( (void**)&image2, IM_W*IM_H*sizeof(uchar) );
+
+    std::cout << "image 1: " << (void*)image1 << "\nimage 2: " << (void*)image2 << std::endl; 
     
     cudaArray *cuArray;
     // Allocate CUDA array in device memory
@@ -105,8 +107,8 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
     }
     // sync via precission time protocol
-    if( !cam->startPTP() )
-	exit( EXIT_FAILURE );
+//    if( !cam->startPTP() )
+//	exit( EXIT_FAILURE );
 
 
 
@@ -174,6 +176,7 @@ int main(int argc, char *argv[])
     while( prevTimestamp >= newTimestamp )
     {
 	// loop until new frame is in
+	//std::cout << (float)newTimestamp/1e9 << std::endl;
     }
     prevTimestamp = newTimestamp;
     prevTime = (float)prevTimestamp/1e9;
@@ -207,12 +210,13 @@ int main(int argc, char *argv[])
 	while( prevTimestamp >= newTimestamp )
 	{
 	    // loop until new frame is in
+	    //std::cout << (float)newTimestamp/1e9 << std::endl;
 	}
 	
 	lock.lock();
 	
 	// maybe should not be async b.c of mutex..
-	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
+	cudaMemcpyToArrayAsync(cuArray, 0, 0,(void*)image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
 	checkCUDAError("mempcy texture");
 
 	
@@ -232,6 +236,8 @@ int main(int argc, char *argv[])
 	
 	newTime = (float)prevTimestamp/1e9;
 
+std::cout << newTime - prevTime << std::endl;
+
 	
 #ifdef _WITH_ROBOT_
 	// save the measured pose
@@ -249,7 +255,6 @@ int main(int argc, char *argv[])
 	sir.update(prevTime, newTime, camera, texObj, motionStream );
 	prevTime = newTime;
 
-	prevTime = newTime;
 
 	sir.resample();
 
@@ -298,7 +303,8 @@ int main(int argc, char *argv[])
     cudaStreamDestroy(motionStream);
     cudaFreeHost(image1);
     cudaFreeHost(image2);
-    
+
+    cam->shutdown();
     delete cam;
 
     return 0;

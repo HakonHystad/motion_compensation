@@ -23,7 +23,7 @@ class FrameObserver : public IFrameObserver
 public :
 // In your contructor call the constructor of the base class
 // and pass a camera object
-    FrameObserver ( CameraPtr pCamera, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, unsigned char *im )
+    FrameObserver ( CameraPtr pCamera, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, volatile unsigned char *im )
 	: IFrameObserver ( pCamera ),
 	  m_im( im ),
 	  m_mtx(mtx),
@@ -34,22 +34,27 @@ public :
     
     void FrameReceived ( const FramePtr pFrame )
 	{
+
 	    VmbFrameStatusType eReceiveStatus;
 	    if( VmbErrorSuccess == pFrame->GetReceiveStatus( eReceiveStatus ) )
 	    {
-		if ( VmbFrameStatusComplete == eReceiveStatus )
+	      std::cout << eReceiveStatus << std::endl;
+	      //		if ( VmbFrameStatusComplete == eReceiveStatus )
 		{
 // Put your code here to react on a successfully received frame
+		  std::cout << "Recieved!" << std::endl;
 		    std::lock_guard<std::mutex> guard(m_mtx);
 
-		    if( pFrame->GetImage(m_im) != VmbErrorSuccess )
+		    unsigned char *tmp;
+		    if( pFrame->GetImage(tmp) != VmbErrorSuccess )
 			return;
-
+		    m_im = tmp;
 		    
 		    VmbUint64_t time;
 		    pFrame->GetTimestamp( time );
 		    m_timestamp = time;
-		    
+
+		    std::cout << "set!" << (void*)m_im << ": " << (float)time/1e9 <<  std::endl;
 
 		}
 
@@ -58,7 +63,7 @@ public :
 	    m_pCamera -> QueueFrame ( pFrame );
 	}
 private:
-    unsigned char *m_im;
+    volatile unsigned char *m_im;
     std::mutex &m_mtx;
     std::atomic<unsigned long long> &m_timestamp;
 };
@@ -68,16 +73,21 @@ class ContinousCamera : public Camera
 {
 
 public:
-    ContinousCamera( unsigned char *imageBuffer1, unsigned char *imageBuffer2, VmbInt64_t bufferSz, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, unsigned char *image, const  std::string cameraID1, const std::string cameraID2 )
+    ContinousCamera( unsigned char *imageBuffer1, unsigned char *imageBuffer2, VmbInt64_t bufferSz, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, volatile unsigned char *image, const  std::string cameraID1, const std::string cameraID2 )
 	: Camera( imageBuffer1, bufferSz, cameraID1, cameraID2 ),
 	  m_frame1( new Frame( imageBuffer1, bufferSz )  ),
 	  m_frame2( new Frame( imageBuffer2, bufferSz )  )
 	{
 	    // base constructor starts cameras
+	  VmbInt64_t nPLS;
+	  FeaturePtr feature;
+	  m_cam2->GetFeatureByName("PayloadSize", feature );
+	  feature->GetValue(nPLS);
+	  std::cout << "Requires " << nPLS << " bytes, got " << bufferSz << std::endl;
 
 	    // announce frames
-	    m_cam1->AnnounceFrame( m_frame1 );
-	    m_cam2->AnnounceFrame( m_frame2 );
+	  m_err( m_cam1->AnnounceFrame( m_frame1 ) );
+	  m_err( m_cam2->AnnounceFrame( m_frame2 ) );
 
 	    // tie observers to frames
 	    m_frame1->RegisterObserver( IFrameObserverPtr( new FrameObserver ( m_cam1, mtx, timestamp, image ) ) );
@@ -87,10 +97,10 @@ public:
 	    m_err( m_cam1->StartCapture() );
 	    m_err( m_cam2->StartCapture() );
 
-	    m_cam1->GetFeatureByName( "AcquisitionStart", m_startAq1 );
-	    m_cam1->GetFeatureByName( "AcquisitionStop", m_stopAq1 );
-	    m_cam2->GetFeatureByName( "AcquisitionStart", m_startAq2 );
-	    m_cam2->GetFeatureByName( "AcquisitionStop", m_stopAq2 );
+	    m_err( m_cam1->GetFeatureByName( "AcquisitionStart", m_startAq1 ) );
+	    m_err( m_cam1->GetFeatureByName( "AcquisitionStop", m_stopAq1 ) );
+	    m_err( m_cam2->GetFeatureByName( "AcquisitionStart", m_startAq2 ) );
+	    m_err( m_cam2->GetFeatureByName( "AcquisitionStop", m_stopAq2 ) );
 	    
 	}
 
@@ -110,12 +120,12 @@ public:
     void startCapture()
 	{
 	    // cam1
-	    m_cam1->QueueFrame(m_frame1);
-	    m_startAq1->RunCommand();
+	  m_err( m_cam1->QueueFrame(m_frame1) );
+	  m_err( m_startAq1->RunCommand() );
 
 	    // cam2
-	    m_cam2->QueueFrame(m_frame2);
-	    m_startAq2->RunCommand();
+	    m_err( m_cam2->QueueFrame(m_frame2) );
+	    m_err( m_startAq2->RunCommand() );
 	    
 	}
 
