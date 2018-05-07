@@ -16,12 +16,12 @@ final_poses = cell( len, 1 );
 for i=1:len
     T = eye(4);
     T(1:3,1:3) = rotz( measured_poses(4,i) )*roty( measured_poses(5,i) )*rotx( measured_poses(6,i) );
-    T(1:3,4) = measured_poses(1:3,i)';
+    T(1:3,4) = measured_poses(1:3,i)'./1e3;
     final_poses{i} = T;
 end
 
 %% configuration
-improve = false;% use proposed alogrithm to improve transformations
+improve = true;% use proposed alogrithm to improve transformations
 squareSize =0.03;% m
 
 imageBaseName = './data/im_';% path and start of filename to images
@@ -36,9 +36,7 @@ imageExtension = '.pgm';
 %  The stereoCameraCalibrator app can also be used to get a visual rep of
 %  the initial calibration
 
-%% read end-effector poses
-% the poses used are the ones generated from the calibration config
-% poses
+
 
 %% detect calibration pattern
 n_imagePairs = length(final_poses);
@@ -68,8 +66,7 @@ I1 = imread(images1{1});
     'InitialIntrinsicMatrix', [], 'InitialRadialDistortion', [], ...
     'ImageSize', [mrows, ncols]);
 
-stereoParams.CameraParameters1.IntrinsicMatrix'
-stereoParams.CameraParameters2.IntrinsicMatrix'
+
 
 %% calculate camera to world transforms
 
@@ -127,5 +124,7 @@ fclose(fid);
 %% visualize
 % Visualize pattern locations
 h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
+hold on
+plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
 
 % end
