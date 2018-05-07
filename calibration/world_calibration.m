@@ -1,13 +1,28 @@
-function world_calibration( squareSize, improve)
+% function world_calibration( squareSize, improve)
 
 %% calibration routine
 addpath('./matlab_support');
 
-load './data/scene.mat'
+% load './data/scene.mat'
+fid = fopen('data/measured_poses.txt');
+
+if fid<0
+    error('No measured poses');
+end
+
+measured_poses = fscanf(fid, '%f', [6 inf] );
+len = length(measured_poses);
+final_poses = cell( len, 1 );
+for i=1:len
+    T = eye(4);
+    T(1:3,1:3) = rotz( measured_poses(4,i) )*roty( measured_poses(5,i) )*rotx( measured_poses(6,i) );
+    T(1:3,4) = measured_poses(1:3,i)';
+    final_poses{i} = T;
+end
 
 %% configuration
-% improve = true;% use proposed alogrithm to improve transformations
-% squareSize = 0.14;  % in units of 'm'
+improve = false;% use proposed alogrithm to improve transformations
+squareSize =0.03;% m
 
 imageBaseName = './data/im_';% path and start of filename to images
 imageExtension = '.pgm';
@@ -32,14 +47,14 @@ images1 = cell(1, n_imagePairs);
 images2 = images1;
 
 for i=1:n_imagePairs
-    images1{i} = [imageBaseName num2str(i) 'a' imageExtension];
-    images2{i} = [imageBaseName num2str(i) 'b' imageExtension];
+    images1{i} = [imageBaseName num2str(i-1) 'a' imageExtension];
+    images2{i} = [imageBaseName num2str(i-1) 'b' imageExtension];
 end
 
 % detect
 [imagePoints, boardSize, imagesUsed] = detectCheckerboardPoints(images1, images2);
 final_poses(~imagesUsed) = []; 
-% make a pattern from the data
+%% make a pattern from the data
 worldPoints = generateCheckerboardPoints(boardSize, squareSize);
 
 %% calibrate
@@ -52,6 +67,9 @@ I1 = imread(images1{1});
     'NumRadialDistortionCoefficients', 2, 'WorldUnits', 'm', ...
     'InitialIntrinsicMatrix', [], 'InitialRadialDistortion', [], ...
     'ImageSize', [mrows, ncols]);
+
+stereoParams.CameraParameters1.IntrinsicMatrix'
+stereoParams.CameraParameters2.IntrinsicMatrix'
 
 %% calculate camera to world transforms
 
@@ -110,4 +128,4 @@ fclose(fid);
 % Visualize pattern locations
 h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
 
-end
+% end
