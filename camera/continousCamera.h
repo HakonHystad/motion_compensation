@@ -5,7 +5,7 @@
 
 #include <atomic>
 #include <mutex>
-
+#include <unistd.h>
 
 #include "camera.h"
 
@@ -23,9 +23,10 @@ class FrameObserver : public IFrameObserver
 public :
 // In your contructor call the constructor of the base class
 // and pass a camera object
-    FrameObserver ( CameraPtr pCamera, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, volatile unsigned char *im )
+  FrameObserver ( CameraPtr pCamera, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, std::atomic<int> &currentCam, int camNr )
 	: IFrameObserver ( pCamera ),
-	  m_im( im ),
+	  m_currentCam( currentCam ),
+    m_cam( camNr ),
 	  m_mtx(mtx),
 	  m_timestamp(timestamp)
 	{
@@ -38,23 +39,20 @@ public :
 	    VmbFrameStatusType eReceiveStatus;
 	    if( VmbErrorSuccess == pFrame->GetReceiveStatus( eReceiveStatus ) )
 	    {
-	      std::cout << eReceiveStatus << std::endl;
-	      //		if ( VmbFrameStatusComplete == eReceiveStatus )
+	      //	      std::cout << eReceiveStatus << std::endl;
+	      if ( VmbFrameStatusComplete == eReceiveStatus )
 		{
 // Put your code here to react on a successfully received frame
-		  std::cout << "Recieved!" << std::endl;
 		    std::lock_guard<std::mutex> guard(m_mtx);
+		    std::cout << "Recieved camera "<< m_cam << std::endl;
 
-		    unsigned char *tmp;
-		    if( pFrame->GetImage(tmp) != VmbErrorSuccess )
-			return;
-		    m_im = tmp;
+		    m_currentCam = m_cam;
 		    
 		    VmbUint64_t time;
 		    pFrame->GetTimestamp( time );
 		    m_timestamp = time;
 
-		    std::cout << "set!" << (void*)m_im << ": " << (float)time/1e9 <<  std::endl;
+	
 
 		}
 
@@ -63,7 +61,8 @@ public :
 	    m_pCamera -> QueueFrame ( pFrame );
 	}
 private:
-    volatile unsigned char *m_im;
+    std::atomic<int> &m_currentCam;
+    int m_cam;
     std::mutex &m_mtx;
     std::atomic<unsigned long long> &m_timestamp;
 };
@@ -73,25 +72,29 @@ class ContinousCamera : public Camera
 {
 
 public:
-    ContinousCamera( unsigned char *imageBuffer1, unsigned char *imageBuffer2, VmbInt64_t bufferSz, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, volatile unsigned char *image, const  std::string cameraID1, const std::string cameraID2 )
+    ContinousCamera( unsigned char *imageBuffer1, unsigned char *imageBuffer2, VmbInt64_t bufferSz, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, std::atomic<int> &currentCam, const  std::string cameraID1, const std::string cameraID2 )
 	: Camera( imageBuffer1, bufferSz, cameraID1, cameraID2 ),
 	  m_frame1( new Frame( imageBuffer1, bufferSz )  ),
 	  m_frame2( new Frame( imageBuffer2, bufferSz )  )
 	{
 	    // base constructor starts cameras
+
+	  /*
 	  VmbInt64_t nPLS;
 	  FeaturePtr feature;
+	  
 	  m_cam2->GetFeatureByName("PayloadSize", feature );
 	  feature->GetValue(nPLS);
 	  std::cout << "Requires " << nPLS << " bytes, got " << bufferSz << std::endl;
-
+	  */
+	  
 	    // announce frames
 	  m_err( m_cam1->AnnounceFrame( m_frame1 ) );
 	  m_err( m_cam2->AnnounceFrame( m_frame2 ) );
 
 	    // tie observers to frames
-	    m_frame1->RegisterObserver( IFrameObserverPtr( new FrameObserver ( m_cam1, mtx, timestamp, image ) ) );
-	    m_frame2->RegisterObserver( IFrameObserverPtr( new FrameObserver ( m_cam2, mtx, timestamp, image ) ) );
+	  m_frame1->RegisterObserver( IFrameObserverPtr( new FrameObserver ( m_cam1, mtx, timestamp, currentCam, 1 ) ) );
+	  m_frame2->RegisterObserver( IFrameObserverPtr( new FrameObserver ( m_cam2, mtx, timestamp, currentCam, 2 ) ) );
 
 	    // ready api for capture
 	    m_err( m_cam1->StartCapture() );
@@ -117,21 +120,29 @@ public:
 	}
 
 
-    void startCapture()
+    void startCapture( int camNr = 0)
 	{
-	    // cam1
-	  m_err( m_cam1->QueueFrame(m_frame1) );
-	  m_err( m_startAq1->RunCommand() );
-
-	    // cam2
-	    m_err( m_cam2->QueueFrame(m_frame2) );
-	    m_err( m_startAq2->RunCommand() );
-	    
+	  if( camNr==1 || camNr ==0 )
+	    {
+	      // cam1
+	      m_err( m_cam1->QueueFrame(m_frame1) );
+	      m_err( m_startAq1->RunCommand() );
+	    }
+	 
+	  sleep(0.025);// try to get offset captures.. 
+	  if( camNr==2 || camNr==0 )
+	    {
+	      // cam2
+	      m_err( m_cam2->QueueFrame(m_frame2) );
+	      m_err( m_startAq2->RunCommand() );
+	    }
 	}
 
-    void stopCapture()
+    void stopCapture( int camNr = 0)
 	{
+	  if( camNr==1 || camNr ==0 )
 	    m_stopAq1->RunCommand();
+	  if( camNr==2 || camNr ==0 )
 	    m_stopAq2->RunCommand();
 	}
 

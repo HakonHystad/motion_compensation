@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////
     // set up image loading
     /////////////////////////////////////////////////////////////
-    volatile uchar *image = NULL;
+    uchar *image;
     uchar *image1;
     uchar *image2;
     
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     cudaMallocHost( (void**)&image1, IM_W*IM_H*sizeof(uchar) );
     cudaMallocHost( (void**)&image2, IM_W*IM_H*sizeof(uchar) );
 
-    std::cout << "image 1: " << (void*)image1 << "\nimage 2: " << (void*)image2 << std::endl; 
+//    std::cout << "image 1: " << (void*)image1 << "\nimage 2: " << (void*)image2 << std::endl; 
     
     cudaArray *cuArray;
     // Allocate CUDA array in device memory
@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     HH::ContinousCamera *cam = NULL;
     unsigned long long prevTimestamp=0;
     std::atomic<unsigned long long> newTimestamp(0);
+    std::atomic<int> currentCam(1);
     
     std::mutex mtx;
     std::unique_lock<std::mutex> lock(mtx);
@@ -101,14 +102,14 @@ int main(int argc, char *argv[])
     try
     {
       //      cam = new HH::Camera( image, IM_H*IM_W, "02-2165A-07078", "02-2165A-07077" );
-	cam = new HH::ContinousCamera( image1, image2, IM_H*IM_W, mtx, newTimestamp, image, camID1, camID2 );
+	cam = new HH::ContinousCamera( image1, image2, IM_H*IM_W, mtx, newTimestamp, currentCam, camID1, camID2 );
     }catch(VmbErrorType)
     {
 	exit( EXIT_FAILURE );
     }
     // sync via precission time protocol
-//    if( !cam->startPTP() )
-//	exit( EXIT_FAILURE );
+    if( !cam->startPTP() )
+	exit( EXIT_FAILURE );
 
 
 
@@ -181,6 +182,8 @@ int main(int argc, char *argv[])
     prevTimestamp = newTimestamp;
     prevTime = (float)prevTimestamp/1e9;
 
+    //    cam->stopCapture();
+
 #ifdef _WITH_ROBOT_
     while(!robot.poseReached())
     {
@@ -205,38 +208,54 @@ int main(int argc, char *argv[])
 	//////////////////////////////////////////////////////////////
 	// get currect image from buffer
 	/////////////////////////////////////////////////////////////
-
+	/*
+	if( currentCam == 1 )
+	  cam->startCapture(2);
+	else
+	  cam->startCapture(1);
+	*/
 	
-	while( prevTimestamp >= newTimestamp )
+	while( (newTimestamp - prevTimestamp)<(0.01*1e9) )// require frames to be at least 1ms between eachother
 	{
 	    // loop until new frame is in
 	    //std::cout << (float)newTimestamp/1e9 << std::endl;
 	}
 	
 	lock.lock();
-	
-	// maybe should not be async b.c of mutex..
-	cudaMemcpyToArrayAsync(cuArray, 0, 0,(void*)image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
-	checkCUDAError("mempcy texture");
 
-	
-	prevTimestamp = newTimestamp;
-
-	if( image==image1 )
+	if( currentCam == 1 )
+	  {
 	    camera = d_camera1;
-	else if( image==image2 )
+	    image = image1;
+	  }	  
+	else if( currentCam == 2 )
+	  {
 	    camera = d_camera2;
+	    image = image2;
+	  }
 	else
 	{
-	    std::cerr << "Not expected image buffer\n";
+	    std::cerr << "Not expected currentCam\n";
+	    lock.unlock();
 	    break;
 	}
+
+	
+	// maybe should not be async b.c of mutex..
+//	std::cout << "Address: " << (void*)image << std::endl;
+
+	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
+	checkCUDAError("mempcy texture");
+
+	//cam->stopCapture(currentCam);
+	prevTimestamp = newTimestamp;
+
 	
 	lock.unlock();
 	
 	newTime = (float)prevTimestamp/1e9;
 
-std::cout << newTime - prevTime << std::endl;
+	std::cout << "Integrated over " << newTime - prevTime << "s" << std::endl;
 
 	
 #ifdef _WITH_ROBOT_
