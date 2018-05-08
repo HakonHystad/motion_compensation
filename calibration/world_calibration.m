@@ -84,6 +84,7 @@ camera1 = stereoParams.CameraParameters1.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_c
 camera2 = stereoParams.CameraParameters2.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_cw2;
 
 
+
 %% save results
 fid = fopen('../data/camera_parameters.txt', 'wt');
 if fid<0
@@ -125,6 +126,9 @@ fclose(fid);
 % Visualize pattern locations
 h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
 hold on
-plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
-
+% plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
+T_cw1 = inv( T_cw1 );
+for i=1:3
+    quiver3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), T_cw1(1,i), T_cw1(2,i), T_cw1(3,i) );
+end
 % end
