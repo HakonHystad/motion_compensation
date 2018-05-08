@@ -129,7 +129,7 @@ public:
 	      m_err( m_startAq1->RunCommand() );
 	    }
 	 
-	  sleep(0.025);// try to get offset captures.. 
+	  sleep(0.015);// try to get offset captures.. 
 	  if( camNr==2 || camNr==0 )
 	    {
 	      // cam2

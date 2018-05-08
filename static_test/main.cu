@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
 	else
 	  cam->startCapture(1);
 	*/
-	
-	while( (newTimestamp - prevTimestamp)<(0.01*1e9) )// require frames to be at least 1ms between eachother
+
+	while( (newTimestamp - prevTimestamp)<(0.005*1e9) )// require frames to be at least 0.5ms between eachother
 	{
 	    // loop until new frame is in
 	    //std::cout << (float)newTimestamp/1e9 << std::endl;
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 
 	//cam->stopCapture(currentCam);
 	prevTimestamp = newTimestamp;
-
+	std::cout << "Using camera " << currentCam << std::endl;
 	
 	lock.unlock();
 	
