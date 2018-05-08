@@ -42,6 +42,11 @@ public:
 	    {
 		// convert to kuka A,B,C (ZYX)
 		XYZ_to_kuka( &tmp[3] );
+
+		// to degrees
+		for( int j = 3; j<6; ++j )
+		  tmp[j] *= (180.0/3.1415926535);
+		
 		// m -> mm
 		for (int i = 0; i < 3; ++i)
 		    tmp[i] *= 1000;
@@ -51,9 +56,9 @@ public:
 	    m_kukaPose.x = tmp[0];
 	    m_kukaPose.y = tmp[1];
 	    m_kukaPose.z = tmp[2];
-	    m_kukaPose.a = tmp[3]*(180.0/3.1415926535);
-	    m_kukaPose.b = tmp[4]*(180.0/3.1415926535);
-	    m_kukaPose.c = tmp[5]*(180.0/3.1415926535);
+	    m_kukaPose.a = tmp[3];
+	    m_kukaPose.b = tmp[4];
+	    m_kukaPose.c = tmp[5];
 
 	    std::cout << m_kukaPose.toString() << std::endl;
 

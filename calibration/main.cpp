@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
 	for (int j = 0; j < 6; ++j)
 	  {
 	    fd >> robot.pose[j];// TODO? error handling
+	
 	    std::cout << robot.pose[j] << " ";
 	  }
 	std::cout << std::endl;
