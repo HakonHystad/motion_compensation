@@ -69,7 +69,8 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
     std::random_device rd{};
     std::mt19937 gen{rd()};
 
-    float *h_states = new float[N_PARTICLES*N_STATES];
+//    float *h_states = new float[N_PARTICLES*N_STATES];
+  float h_states[N_PARTICLES*N_STATES];
 
     // pack memory for thread coalessing N_STATES*N_PARTICLES matrix
     for (int state = 0; state < N_STATES; ++state)
@@ -102,7 +103,7 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
     init_kernel<<< blocksPerGrid, threadsPerBlock >>>(
 */
 
-	    delete h_states;
+//	    delete h_states;
 }
 
 
