@@ -36,7 +36,7 @@ function cost = optimizeHH( optVec, pattern, imPts, T_we, correctPoints )
     npts = length( pattern );
     cost = zeros( 1, len*npts );
 
-    [R, t, K1, k1, K2, k2, T_eo, T_cw] = unpack( optVec );
+    [R, t, K1, k1, K2, k2, T_eo, T_wc] = unpack( optVec );
     
     if correctPoints
         F = K2'\Skew(t)*R/K1;
@@ -58,14 +58,18 @@ function cost = optimizeHH( optVec, pattern, imPts, T_we, correctPoints )
     for i=1:len
 
         % build cameras
-        T = T_cw*T_we{i}*T_eo;
+        T = inv( T_we{i}*T_eo )*T_wc;
         cam1 = [ K1 [0 0 0]' ]*T;
-        cam2 = [ K2 [0 0 0]' ]*[R t; 0 0 0 1]*T;
         
+        R_wc2 = R'*T(1:3,1:3);
+        t_wc2 = -R'*T(1:3,4) + t;    
+        T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
+        
+        cam2 = [ K2 [0 0 0]' ]*T*T_wc2;
         pattern1 = project( cam1, pattern );
         pattern2 = project( cam2, pattern );
         diff = sqrt( sum( ( pattern1(1:2,:) - imPts(:,:,i,1)' ).^2 , 1 ) );% norm
-        diff = diff + sqrt( sum( ( pattern2(1:2,:) - imPts(:,:,i,2)' ).^2 , 1 ) );
+%         diff = diff + sqrt( sum( ( pattern2(1:2,:) - imPts(:,:,i,2)' ).^2 , 1 ) );
         
         cost( cs:ce ) = diff;
         cs = ce +1;

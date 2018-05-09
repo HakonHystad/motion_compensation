@@ -1,4 +1,4 @@
-function [T_cw1, T_cw2, T_eo, parameters] = findTransformations( stereoParam, T_we )
+function [T_wc1, T_wc2, T_eo, parameters] = findTransformations( stereoParam, T_we )
 
     len = length(T_we);
     
@@ -10,17 +10,20 @@ function [T_cw1, T_cw2, T_eo, parameters] = findTransformations( stereoParam, T_
         T_co2{k} = [ stereoParam.CameraParameters2.RotationMatrices(:,:,k)',...
                    stereoParam.CameraParameters2.TranslationVectors(k,:)'; 0 0 0 1];
     end
-    %% find camera 1 to world transformation
-    [A1, B1] = packTcw( T_we, T_co1 );
-    T_cw1 = solveAXXB( A1, B1 );
+    %% find world transformation to camera 1
+    [A1, B1] = packTwc( T_we, T_co1 );
+    T_wc1 = solveAXXB( A1, B1 );
     
     %% find camera 2 to world transformation
     R = stereoParam.RotationOfCamera2';
     t = stereoParam.TranslationOfCamera2';
     
-    [A2, B2] = packTcw( T_we, T_co2 );
+    [A2, B2] = packTwc( T_we, T_co2 );
     
-    [T_cw1, T_cw2, R, t] = refineRelationship( T_cw1, R, t, A1, B1, A2, B2 );
+%         T_wc2 = solveAXXB( A2, B2 );
+
+    
+    [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1, B1, A2, B2 );
 
     
     %% find end-effector to object transformation
@@ -38,9 +41,8 @@ function [T_cw1, T_cw2, T_eo, parameters] = findTransformations( stereoParam, T_
     
 end
 
-function [A,B] = packTcw( T_we, T_co )
-    % T_co = T_cw*T_we*T_eo => T_oe = T_oc*T_cw*T_we => 
-    % T_co2*T_o1c*T_cw = T_cw*T_we2*T_e1w <=> AX = XB
+function [A,B] = packTwc( T_we, T_co )
+
     len = length( T_we );
     
     A = cell(len/2,1);
@@ -48,16 +50,16 @@ function [A,B] = packTcw( T_we, T_co )
     
     count = 1;
     for i=1:2:len
-        A{count} = T_co{i+1}/T_co{i};
-        B{count} = T_we{i+1}/T_we{i};
+        A{count} = T_we{i+1}/T_we{i};
+        B{count} = T_co{i+1}/T_co{i};
+        
         
         count = count +1;
     end
 end
 
 function [A,B] = packTeo( T_we, T_co )
-    % T_co = T_cw*T_we*T_eo => T_wc = T_we*T_eo*T_oc => 
-    % T_e2w*T_we1*T_eo = T_eo*T_o2c*T_co1 <=> AX = XB
+
     len = length( T_we );
     
     A = cell(len/2,1);
@@ -67,7 +69,7 @@ function [A,B] = packTeo( T_we, T_co )
     for i=1:2:len
         A{count} = T_we{i+1}\T_we{i};
         B{count} = T_co{i+1}\T_co{i};
-        
+
         count = count +1;
     end
 end
@@ -100,13 +102,13 @@ function T = solveAXXB( A, B )
    T = [ R_X t_X; 0 0 0 1 ]; 
 end
 
-function [T_cw1, T_cw2, R, t] = refineRelationship( T_cw1, R, t, A1,B1, A2,B2 )
+function [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1,B1, A2,B2 )
     
     optVec = zeros( 1,12);
     % R_cw1
-    optVec(1:3) =  rotationMatrixToVector(T_cw1(1:3,1:3));
+    optVec(1:3) =  rotationMatrixToVector(T_wc1(1:3,1:3));
     % t_cw1
-    optVec(4:6) = T_cw1(1:3,4)';
+    optVec(4:6) = T_wc1(1:3,4)';
     % R
     optVec(7:9) = rotationMatrixToVector(R);
     % t
@@ -115,16 +117,16 @@ function [T_cw1, T_cw2, R, t] = refineRelationship( T_cw1, R, t, A1,B1, A2,B2 )
     options = optimset('Algorithm','levenberg-marquardt','Display','off');
     optVec = lsqnonlin(@(p)optimizeDoubleX(p, A1, B1, A2, B2),optVec,[],[],options);
     
-    T_cw1 = [ rotationVectorToMatrix(optVec(1:3)) optVec(4:6)'; 0 0 0 1];
+    T_wc1 = [ rotationVectorToMatrix(optVec(1:3)) optVec(4:6)'; 0 0 0 1];
     
     R = rotationVectorToMatrix( optVec(7:9) );
     t = optVec(10:12)';
 
     
-    R_cw2 = R*T_cw1(1:3,1:3);
-    t_cw2 = R*T_cw1(1:3,4) + t;
+    R_wc2 = R'*T_wc1(1:3,1:3);
+    t_wc2 = -R'*T_wc1(1:3,4) + t;
     
-    T_cw2 = [R_cw2 t_cw2; 0 0 0 1];
+    T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
     
     
 end
@@ -135,10 +137,12 @@ function e = optimizeDoubleX( optVec, A1, B1, A2, B2 )
         R = rotationVectorToMatrix( optVec(7:9) );
         t = optVec(10:12)';
         
-        R_cw2 = R*X1(1:3,1:3);
-        t_cw2 = R*X1(1:3,4) + t;
+%         R_wc2 = X1(1:3,1:3)*R;
+%         t_wc2 = X1(1:3,1:3)*t + X1(1:3,4);
+        R_wc2 = R'*X1(1:3,1:3);
+        t_wc2 = -R'*X1(1:3,4) + t;
         
-        X2 = [R_cw2 t_cw2; 0 0 0 1];
+        X2 = [R_wc2 t_wc2; 0 0 0 1];
         
         len = length(A1);
         e = zeros(len,1);

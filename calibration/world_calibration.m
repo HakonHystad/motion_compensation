@@ -21,7 +21,7 @@ for i=1:len
 end
 
 %% configuration
-improve = true;% use proposed alogrithm to improve transformations
+improve = false;% use proposed alogrithm to improve transformations
 squareSize =0.03;% m
 
 imageBaseName = './data/im_';% path and start of filename to images
@@ -67,21 +67,22 @@ I1 = imread(images1{1});
     'ImageSize', [mrows, ncols]);
 
 
-
+sp_raw = stereoParams;
 %% calculate camera to world transforms
-
-[ T_cw1, T_cw2, T_eo, stereoParams ] = findTransformations( stereoParams, final_poses );
+stereoParams = sp_raw;
+[ T_wc1, T_wc2, T_eo, stereoParams ] = findTransformations( sp_raw, final_poses );
+% T_wc1(1:3,1:3) = T_wc1(1:3,1:3)*rotx(-90)*rotz(90);
 
 %% optionally improve by proposed algorithm  
 if improve
-    [stereoParams, ~, T_cw1] = estimateHH( stereoParams, imagePoints, T_eo, final_poses, T_cw1, false );
+    [stereoParams, ~, T_wc1] = estimateHH( stereoParams, imagePoints, T_eo, final_poses, T_wc1, false );
     T = [ stereoParams.RotationOfCamera2' stereoParams.TranslationOfCamera2'; 0 0 0 1];
-    T_cw2 = T*T_cw1;
+    T_wc2 = T*T_wc1;
 end
 
 %% make cameras
-camera1 = stereoParams.CameraParameters1.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_cw1;
-camera2 = stereoParams.CameraParameters2.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_cw2;
+camera1 = stereoParams.CameraParameters1.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_wc1;
+camera2 = stereoParams.CameraParameters2.IntrinsicMatrix'*[ eye(3) [0 0 0]']/T_wc2;
 
 
 
@@ -124,11 +125,29 @@ end
 fclose(fid);
 %% visualize
 % Visualize pattern locations
-h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
+% h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
+% hold on
+% % plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
+% T = inv(T_wc1);
+% % T = T_wc1;
+% % T(1:3,4) = -T(1:3,1:3)'*T(1:3,4);
+% % T(1:3,1:3) = T(1:3,1:3)*rotx(-90)*rotz(90);
+% 
+% 
+% color = ['r', 'g', 'b'];
+% for i=1:3
+%     quiver3( T(1,4), T(2,4), T(3,4), T(1,i), T(2,i), T(3,i), 'Color', color(i) );
+% end
+
+figure;
+plot3( 0,0,0,'b*' );
+T1 = T_wc1;
+T2 = T_wc2;
 hold on
-% plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
-T_cw1 = inv( T_cw1 );
 for i=1:3
-    quiver3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), T_cw1(1,i), T_cw1(2,i), T_cw1(3,i) );
+    quiver3( T1(1,4), T1(2,4), T1(3,4), T1(1,i), T1(2,i), T1(3,i), 'Color', color(i) );
+%     quiver3( T2(1,4), T2(2,4), T2(3,4), T2(1,i), T2(2,i), T2(3,i), 'Color', color(i) );
 end
+
+
 % end
