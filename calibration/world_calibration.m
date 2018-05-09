@@ -76,8 +76,11 @@ stereoParams = sp_raw;
 %% optionally improve by proposed algorithm  
 if improve
     [stereoParams, ~, T_wc1] = estimateHH( stereoParams, imagePoints, T_eo, final_poses, T_wc1, false );
-    T = [ stereoParams.RotationOfCamera2' stereoParams.TranslationOfCamera2'; 0 0 0 1];
-    T_wc2 = T*T_wc1;
+    R = stereoParams.RotationOfCamera2';
+    t = stereoParams.TranslationOfCamera2';
+    R_wc2 = R'*T_wc1(1:3,1:3);
+    t_wc2 = R'*T_wc1(1:3,4) + t;
+    T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
 end
 
 %% make cameras
@@ -125,7 +128,7 @@ end
 fclose(fid);
 %% visualize
 % Visualize pattern locations
-% h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
+h2=figure; showExtrinsics(stereoParams, 'CameraCentric');
 % hold on
 % % plot3( T_cw1(1,4), T_cw1(2,4), T_cw1(3,4), 'ro' );
 % T = inv(T_wc1);
@@ -134,20 +137,20 @@ fclose(fid);
 % % T(1:3,1:3) = T(1:3,1:3)*rotx(-90)*rotz(90);
 % 
 % 
-% color = ['r', 'g', 'b'];
+color = ['r', 'g', 'b'];
 % for i=1:3
 %     quiver3( T(1,4), T(2,4), T(3,4), T(1,i), T(2,i), T(3,i), 'Color', color(i) );
 % end
 
-figure;
-plot3( 0,0,0,'b*' );
-T1 = T_wc1;
-T2 = T_wc2;
-hold on
-for i=1:3
-    quiver3( T1(1,4), T1(2,4), T1(3,4), T1(1,i), T1(2,i), T1(3,i), 'Color', color(i) );
+% figure;
+% plot3( 0,0,0,'b*' );
+% T1 = T_wc1;
+% T2 = T_wc2;
+% hold on
+% for i=1:3
+%     quiver3( T1(1,4), T1(2,4), T1(3,4), T1(1,i), T1(2,i), T1(3,i), 'Color', color(i) );
 %     quiver3( T2(1,4), T2(2,4), T2(3,4), T2(1,i), T2(2,i), T2(3,i), 'Color', color(i) );
-end
+% end
 
 
 % end

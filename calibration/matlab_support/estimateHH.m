@@ -58,18 +58,16 @@ function cost = optimizeHH( optVec, pattern, imPts, T_we, correctPoints )
     for i=1:len
 
         % build cameras
-        T = inv( T_we{i}*T_eo )*T_wc;
+        T = inv(T_wc)*T_we{i}*T_eo;
         cam1 = [ K1 [0 0 0]' ]*T;
+   
+        T_ = [ R t; 0 0 0 1 ]*T;
         
-        R_wc2 = R'*T(1:3,1:3);
-        t_wc2 = -R'*T(1:3,4) + t;    
-        T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
-        
-        cam2 = [ K2 [0 0 0]' ]*T*T_wc2;
+        cam2 = [ K2 [0 0 0]' ]*T_;
         pattern1 = project( cam1, pattern );
         pattern2 = project( cam2, pattern );
         diff = sqrt( sum( ( pattern1(1:2,:) - imPts(:,:,i,1)' ).^2 , 1 ) );% norm
-%         diff = diff + sqrt( sum( ( pattern2(1:2,:) - imPts(:,:,i,2)' ).^2 , 1 ) );
+        diff = diff + sqrt( sum( ( pattern2(1:2,:) - imPts(:,:,i,2)' ).^2 , 1 ) );
         
         cost( cs:ce ) = diff;
         cs = ce +1;
