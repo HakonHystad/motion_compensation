@@ -20,10 +20,10 @@ function [T_wc1, T_wc2, T_eo, parameters] = findTransformations( stereoParam, T_
     
     [A2, B2] = packTwc( T_we, T_co2 );
     
-        T_wc2 = solveAXXB( A2, B2 );
+%         T_wc2 = solveAXXB( A2, B2 );
 
     
-%     [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1, B1, A2, B2 );
+    [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1, B1, A2, B2 );
 
     
     %% find end-effector to object transformation
@@ -123,10 +123,11 @@ function [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1,B1, A2,B2 )
     t = optVec(10:12)';
 
     
-    R_wc2 = R'*T_wc1(1:3,1:3);
-    t_wc2 = -R'*T_wc1(1:3,4) + t;
-    
-    T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
+%     R_wc2 = R'*T_wc1(1:3,1:3);
+%     t_wc2 = -R'*T_wc1(1:3,4) + t;
+%     
+%     T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
+    T_wc2 = T_wc1*inv([ R t; 0 0 0 1]);
     
     
 end
@@ -137,12 +138,10 @@ function e = optimizeDoubleX( optVec, A1, B1, A2, B2 )
         R = rotationVectorToMatrix( optVec(7:9) );
         t = optVec(10:12)';
         
-%         R_wc2 = X1(1:3,1:3)*R;
-%         t_wc2 = X1(1:3,1:3)*t + X1(1:3,4);
-        R_wc2 = R'*X1(1:3,1:3);
-        t_wc2 = -R'*X1(1:3,4) + t;
-        
-        X2 = [R_wc2 t_wc2; 0 0 0 1];
+%         R_wc2 = R'*X1(1:3,1:3);
+%         t_wc2 = -R'*X1(1:3,4) + t;
+%         X2 = [R_wc2 t_wc2; 0 0 0 1];
+          X2 = X1*inv( [R t; 0 0 0 1] );
         
         len = length(A1);
         e = zeros(len,1);

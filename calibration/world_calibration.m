@@ -142,15 +142,15 @@ color = ['r', 'g', 'b'];
 %     quiver3( T(1,4), T(2,4), T(3,4), T(1,i), T(2,i), T(3,i), 'Color', color(i) );
 % end
 
-% figure;
-% plot3( 0,0,0,'b*' );
-% T1 = T_wc1;
-% T2 = T_wc2;
-% hold on
-% for i=1:3
-%     quiver3( T1(1,4), T1(2,4), T1(3,4), T1(1,i), T1(2,i), T1(3,i), 'Color', color(i) );
-%     quiver3( T2(1,4), T2(2,4), T2(3,4), T2(1,i), T2(2,i), T2(3,i), 'Color', color(i) );
-% end
+figure;
+plot3( 0,0,0,'b*' );
+T1 = T_wc1;
+T2 = T_wc2;
+hold on
+for i=1:3
+    quiver3( T1(1,4), T1(2,4), T1(3,4), T1(1,i), T1(2,i), T1(3,i), 'Color', color(i) );
+    quiver3( T2(1,4), T2(2,4), T2(3,4), T2(1,i), T2(2,i), T2(3,i), 'Color', color(i) );
+end
 
 
 % end
