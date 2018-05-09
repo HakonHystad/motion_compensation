@@ -70,7 +70,7 @@ namespace PARAMETER
  
 
 
-// noise deviatio
+// noise deviatiom
 #define X_SIGMA 0.003f
 #define Y_SIGMA 0.003f
 #define Z_SIGMA 0.003f

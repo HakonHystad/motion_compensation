@@ -305,6 +305,7 @@ int main(int argc, char *argv[])
 	    std::cout << sir[i] << " ";
 	std::cout << std::endl;
 #endif
+
     }
 
     cam->stopCapture();

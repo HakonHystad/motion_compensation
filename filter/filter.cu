@@ -71,7 +71,6 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
 
     float *h_states = new float[N_PARTICLES*N_STATES];
 
- 
     // pack memory for thread coalessing N_STATES*N_PARTICLES matrix
     for (int state = 0; state < N_STATES; ++state)
     {
@@ -80,6 +79,7 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
 	for (int particle = 0; particle < N_PARTICLES; ++particle)
 	{
 	    h_states[ state*N_PARTICLES + particle ] = distribution( gen );
+
 	}
     
     }
