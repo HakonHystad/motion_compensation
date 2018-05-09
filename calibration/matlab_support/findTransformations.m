@@ -20,10 +20,10 @@ function [T_wc1, T_wc2, T_eo, parameters] = findTransformations( stereoParam, T_
     
     [A2, B2] = packTwc( T_we, T_co2 );
     
-%         T_wc2 = solveAXXB( A2, B2 );
+        T_wc2 = solveAXXB( A2, B2 );
 
     
-    [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1, B1, A2, B2 );
+%     [T_wc1, T_wc2, R, t] = refineRelationship( T_wc1, R, t, A1, B1, A2, B2 );
 
     
     %% find end-effector to object transformation
