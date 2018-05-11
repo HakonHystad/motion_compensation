@@ -5,7 +5,7 @@ EXE=filter.out
 CU=nvcc
 CXX = g++
 CXXFLAGS = --std=c++11 -O3
-CUFLAGS = -D_FORCE_INLINES -std=c++11 -arch=sm_50 --maxrregcount=32 -O3  --use_fast_math -lboost_system -lboost_date_time #-g -G `pkg-config --cflags --libs opencv`
+CUFLAGS = -D_FORCE_INLINES -std=c++11 -arch=sm_50 --maxrregcount=32 -O3  --use_fast_math -lboost_system -lboost_date_time `pkg-config --cflags --libs opencv`
 objects= build/main.o build/filter.o
 
 default: $(EXE)

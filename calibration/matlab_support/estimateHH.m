@@ -61,7 +61,7 @@ function cost = optimizeHH( optVec, pattern, imPts, T_we, correctPoints )
         T = inv(T_wc)*T_we{i}*T_eo;
         cam1 = [ K1 [0 0 0]' ]*T;
    
-        T_ = [ R t; 0 0 0 1 ]*T;
+        T_ = inv( [ R t; 0 0 0 1 ] )*T;
         
         cam2 = [ K2 [0 0 0]' ]*T_;
         pattern1 = project( cam1, pattern );

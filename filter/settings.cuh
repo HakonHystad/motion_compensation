@@ -6,7 +6,7 @@ typedef unsigned char uchar;
 #define PARTICLE_BLK_SZ 512
 #define ROUND_TO_BLK_SZ( n ) ( (n + PARTICLE_BLK_SZ/2)/PARTICLE_BLK_SZ )*PARTICLE_BLK_SZ
 
-#define INITIAL_N_PARTICLES 50000// set this as a nominal value, it will be rounded to nearest multiple of block size
+#define INITIAL_N_PARTICLES 150000// set this as a nominal value, it will be rounded to nearest multiple of block size
 #define N_PARTICLES ROUND_TO_BLK_SZ( INITIAL_N_PARTICLES )
 #define N_STATES 12
 #define STEP_SZ 0.003f
@@ -27,7 +27,7 @@ typedef unsigned char uchar;
 #define IM_W 1024// width
 #define IM_H 768// height
 
-#define IM_LAMBDA 6// pixel offset along line normal
+#define IM_LAMBDA 4// pixel offset along line normal
 
 
 /* pre-estimated hanger parameters */
