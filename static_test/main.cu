@@ -40,10 +40,10 @@ int main(int argc, char *argv[])
 
 #ifdef _WITH_ROBOT_
     float initialStates[N_STATES] = {1.5, 0.92, 2.0, 0.0324, 0, 0,	\
-				    3.1415, 0, 0, 0, 0, 0};
+				    0, 0, 0, 0, 0, 0};
 #else
-    float initialStates[N_STATES] = {1.5, 0, 2.0, 0.0324, 0, 0,	\
-				    3.1415, 0, 0, 0, 0, 0};
+    float initialStates[N_STATES] = {1.5, 0, 1.95, 0.0324, 0, 0,	\
+				    0, 0, 0, 0, 0, 0};
 #endif
     // 0.1m, 0.01m/s, ~5.7 deg, ~5.7deg/s
     float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,\
@@ -244,12 +244,13 @@ int main(int argc, char *argv[])
 	// maybe should not be async b.c of mutex..
 //	std::cout << "Address: " << (void*)image << std::endl;
 
-	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
+//	cudaMemcpyToArrayAsync(cuArray, 0, 0, image, IM_W*IM_H*sizeof(uchar) , cudaMemcpyHostToDevice,  memStream);
+	cudaMemcpyToArray(cuArray,0,0,image,IM_W*IM_H*sizeof(uchar), cudaMemcpyHostToDevice );
 	checkCUDAError("mempcy texture");
 
 	//cam->stopCapture(currentCam);
 	prevTimestamp = newTimestamp;
-	std::cout << "Using camera " << currentCam << std::endl;
+	std::cout << "Using camera " << currentCam << ": " << (void*)image << std::endl;
 	
 	lock.unlock();
 	
@@ -304,6 +305,7 @@ int main(int argc, char *argv[])
 	    std::cout << sir[i] << " ";
 	std::cout << std::endl;
 #endif
+
     }
 
     cam->stopCapture();
