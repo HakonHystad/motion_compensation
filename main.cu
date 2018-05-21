@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     float initialStates[N_STATES] = {1.5, 0, 2.0, 0, 0, 0,	\
 				    0, 0, 0, 0, 0, 0};
     // 0.1m, 0.01m/s, ~5.7 deg, ~5.7deg/s
-    float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,\
+float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,	\
 				    0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 
     /* GPU DATA */
@@ -112,7 +112,8 @@ int main(int argc, char *argv[])
     float newTime = 1.0f/60;
 
     // left
-    cv::Mat im = cv::imread( "./calibration/left_segmented.png", CV_LOAD_IMAGE_GRAYSCALE );
+//    cv::Mat im = cv::imread( "./calibration/left_segmented.png", CV_LOAD_IMAGE_GRAYSCALE );
+    cv::Mat im = cv::imread( "./static_left_seg.png", CV_LOAD_IMAGE_GRAYSCALE );
     if( im.total() == IM_H*IM_W )
 	memcpy(image1, im.data, im.total() );
     else
@@ -121,7 +122,8 @@ int main(int argc, char *argv[])
 	exit(EXIT_FAILURE);
     }
     // right
-    im = cv::imread( "./calibration/right_segmented.png", CV_LOAD_IMAGE_GRAYSCALE );
+    im = cv::imread( "./static_right_seg.png", CV_LOAD_IMAGE_GRAYSCALE );
+//    cv::imread( "./calibration/right_segmented.png", CV_LOAD_IMAGE_GRAYSCALE );
     if( im.total() == IM_H*IM_W )
 	memcpy(image2, im.data, im.total() );
     else
@@ -210,6 +212,7 @@ int main(int argc, char *argv[])
 	    std::cout << sir[i] << " ";
 	std::cout << std::endl;
 #endif
+       
     }
 
 
