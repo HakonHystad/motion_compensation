@@ -104,6 +104,15 @@ float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,	\
 	exit( EXIT_FAILURE );
     }
 
+    std::ofstream fd_timing("./data/timings.txt", std::ios::trunc );
+
+    if( !fd_timing.is_open() )
+    {
+	std::cerr << "Could not open timings\n";
+	exit( EXIT_FAILURE );
+    }
+
+
     
     float *camera = d_camera1;
     int currentCam = 1;
@@ -175,6 +184,8 @@ float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,	\
 	checkCUDAError("mempcy texture");
 
 
+	fd_timing << newTime - prevTime << std::endl;
+
 	std::cout << "Integrated over " << newTime - prevTime << "s" << std::endl;
 
 	//////////////////////////////////////////////////////////////
@@ -199,6 +210,7 @@ float initialSigma[N_STATES] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01,	\
 	for (int i = 0; i < N_STATES; ++i)
 	    fd_calc_pose << sir[i] << " ";
 	fd_calc_pose << std::endl;
+
 
 
 #ifdef _TEST_FILTER_
