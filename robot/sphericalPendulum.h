@@ -21,6 +21,14 @@ public:
     ~SphericalPendulum()
 	{}
 
+    // for setting offsets, not thread safe yet
+    double& operator[]( const unsigned char idx )
+	{
+	    return m_offset[idx];
+	}
+
+
+
     
 //////////////////////////////////////////////////////////////
 // convert between euler conventions
@@ -99,13 +107,15 @@ protected:
 
 	    
 	    for(int i = 0; i < 3; ++i)
-		newPose[i] = currentPose[i];
+		newPose[i] = currentPose[i] + m_offset[i];
 
 	    XYZ_to_ZYX( &currentPose[6], &newPose[3] );
 	}
 
 
 private:
+
+    std::vector<double> m_offset = {0,0,0,0,0,0};
 
 //////////////////////////////////////////////////////////////
 // RK 4 step

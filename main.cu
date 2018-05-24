@@ -124,16 +124,24 @@ int main(int argc, char *argv[])
 
     // robot com
 #ifdef _WITH_ROBOT_
-    std::vector<double> base = {0,0,0,-3.141592/2,0,0};
-    std::vector<double> tool = {0,0,0,0,0,0};
+    const std::vector<double> base = {0,0,0,-3.141592/2,0,0};
+    const std::vector<double> tool = {0,0,0,0,0,0};
 
-    std::vector<double> start = {1.35092, 0, 1.784, 0.01, 0, 0, 3.141592, 3.141592/2, 0, 0.0873, -0.0873, 0};
+    const std::vector<double> start = {1.35092, 0, 1.784, 0.01, 0, 0, 3.141592, 3.141592/2, 0, 0.0873, -0.0873, 0};
     auto home_axis = HH::home_axis_kr120;
     home_axis.at(0) -= 3.141592/2;
 
     HH::SphericalPendulum rsi( start, home_axis, base, tool, HH::Manip::KR120, "49001" );
 
     std::vector<double> states = start;
+
+    // add offset to local ref
+    rsi[0] = -0.5;// x
+    rsi[1] = 0;// y
+    rsi[2] = -1.0;// z
+    rsi[3] = 0;// alpha
+    rsi[4] = 3.141592/2;// beta
+    rsi[5] = 0;// gamma
 
 #else
 
