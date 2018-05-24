@@ -10,13 +10,12 @@
 
 #include "cameraError.h"
 
-using namespace AVT::VmbAPI;
-
 
 
 namespace HH
 {
-
+using namespace AVT::VmbAPI;
+    
 class Camera
 {
 
@@ -27,7 +26,7 @@ public:
 	m_system( VimbaSystem::GetInstance() ),
 	m_camID1( cameraID1 ),
 	m_camID2( cameraID2 ),
-	m_frame( new Frame( imageBuffer, bufferSz )  )
+	m_frame( new AVT::VmbAPI::Frame( imageBuffer, bufferSz )  )
 	{
 	    
 	    m_err.setSystem( &m_system );
