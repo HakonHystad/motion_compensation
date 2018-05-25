@@ -21,13 +21,13 @@ public:
     ~SphericalPendulum()
 	{}
 
-    // for setting offsets, not thread safe yet
+    // for setting offsets, NBNB: not thread safe yet
     double& operator[]( const unsigned char idx )
 	{
 	    return m_offset[idx];
 	}
 
-
+    
 
     
 //////////////////////////////////////////////////////////////
@@ -61,6 +61,26 @@ public:
 
 
 protected:
+
+    void addOffset( double pose[6] )
+	{
+	    KDL::Frame T = KDL::Frame( KDL::Rotation::EulerZYX( pose[3],pose[4],pose[5]), Vector(pose[0],pose[1],pose[2] ) );
+
+	    double tmp[3];
+	    XYZ_to_ZYX( &m_offset[3], tmp );
+
+	    T = T*KDL::Frame( KDL::Rotation::EulerZYX( tmp[0], tmp[1], tmp[2]), Vector(m_offset[0],m_offset[1],m_offset[2] ) );
+
+	    pose[0] = T.p.x();
+	    pose[1] = T.p.y();
+	    pose[2] = T.p.z();
+
+	    T.M.GetEulerZYX( pose[3], pose[4], pose[5] );
+
+	    
+	}
+
+    
     virtual void update( double newPose[6], std::vector<double> &currentPose, double interval )
 	{
 	    const double stepSz = 1e-4;
@@ -107,9 +127,11 @@ protected:
 
 	    
 	    for(int i = 0; i < 3; ++i)
-		newPose[i] = currentPose[i] + m_offset[i];
+		newPose[i] = currentPose[i];
 
 	    XYZ_to_ZYX( &currentPose[6], &newPose[3] );
+
+	    addOffset( newPose );
 	}
 
 
