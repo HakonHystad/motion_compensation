@@ -21,7 +21,7 @@ for i=1:len
 end
 
 %% configuration
-improve = true;% use proposed alogrithm to improve transformations
+improve = false;% use proposed alogrithm to improve transformations
 squareSize =0.03;% m
 
 imageBaseName = './data/im_';% path and start of filename to images
@@ -72,6 +72,10 @@ sp_raw = stereoParams;
 stereoParams = sp_raw;
 [ T_wc1, T_wc2, T_eo, stereoParams ] = findTransformations( sp_raw, final_poses );
 % T_wc1(1:3,1:3) = T_wc1(1:3,1:3)*rotx(-90)*rotz(90);
+
+T_wc1
+
+T_wc2
 
 %% optionally improve by proposed algorithm  
 if improve
