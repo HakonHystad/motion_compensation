@@ -21,7 +21,7 @@ for i=1:len
 end
 
 %% configuration
-improve = false;% use proposed alogrithm to improve transformations
+improve = true;% use proposed alogrithm to improve transformations
 squareSize =0.03;% m
 
 imageBaseName = './data/im_';% path and start of filename to images
@@ -78,9 +78,8 @@ if improve
     [stereoParams, ~, T_wc1] = estimateHH( stereoParams, imagePoints, T_eo, final_poses, T_wc1, false );
     R = stereoParams.RotationOfCamera2';
     t = stereoParams.TranslationOfCamera2';
-    R_wc2 = R'*T_wc1(1:3,1:3);
-    t_wc2 = R'*T_wc1(1:3,4) + t;
-    T_wc2 = [R_wc2 t_wc2; 0 0 0 1];
+    
+    T_wc2 = T_wc1*inv( [R t; 0 0 0 1] );
 end
 
 %% make cameras

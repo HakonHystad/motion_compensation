@@ -69,8 +69,8 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
     std::random_device rd{};
     std::mt19937 gen{rd()};
 
-//    float *h_states = new float[N_PARTICLES*N_STATES];
-  float h_states[N_PARTICLES*N_STATES];
+    float *h_states = new float[N_PARTICLES*N_STATES];
+//  float h_states[N_PARTICLES*N_STATES];
 
     // pack memory for thread coalessing N_STATES*N_PARTICLES matrix
     for (int state = 0; state < N_STATES; ++state)
@@ -80,7 +80,6 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
 	for (int particle = 0; particle < N_PARTICLES; ++particle)
 	{
 	    h_states[ state*N_PARTICLES + particle ] = distribution( gen );
-
 	}
     
     }
@@ -89,7 +88,7 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
 
     
     // copy to GPU 
-    cudaMemcpy( d_states1, h_states, sizeof( h_states ), cudaMemcpyHostToDevice );
+    cudaMemcpy( d_states1, h_states, N_PARTICLES*N_STATES*sizeof( float ), cudaMemcpyHostToDevice );
     checkCUDAError("memcpy");
 
     
@@ -103,7 +102,7 @@ void Filter::init( const float mu[], const float sigma[], const float worldPoint
     init_kernel<<< blocksPerGrid, threadsPerBlock >>>(
 */
 
-//	    delete h_states;
+    delete[] h_states;
 }
 
 
@@ -124,7 +123,7 @@ void Filter::update( float startTime, float endTime, const float *d_camera, cuda
 
     
     dim3 blocksPerGrid2( N_PARTICLES, 1, 1 );
-    dim3 threadsPerBlock2( N_LINE_SAMPLES*(N_WPOINTS-1), 1, 1);
+    dim3 threadsPerBlock2( N_LINE_SAMPLES*(N_WPOINTS/2), 1, 1);
 
     cudaMemset( d_weightSum, 0, sizeof(float) );
 
@@ -425,10 +424,10 @@ __global__ void observation_kernel(cudaTextureObject_t texObj, const float *came
     __shared__ float worldPts[3*N_WPOINTS];
     
     __shared__ float imPts[2*N_WPOINTS];
-    __shared__ float normals[2*(N_WPOINTS-1)];
+    __shared__ float normals[N_WPOINTS];
 
     // block reduce to sum weights
-    typedef cub::BlockReduce<float, N_LINE_SAMPLES*(N_WPOINTS-1)> BlockReduce;
+    typedef cub::BlockReduce<float, N_LINE_SAMPLES*(N_WPOINTS/2)> BlockReduce;
     __shared__ typename BlockReduce::TempStorage tmp_storage;
 
 
@@ -462,8 +461,8 @@ __global__ void observation_kernel(cudaTextureObject_t texObj, const float *came
 	    project( tmp, camera, &imPts[2*threadIdx.x] );
 
 	    // and compute normals
-	    if(  threadIdx.x < N_WPOINTS-1 )
-	    computeNormal( &imPts[threadIdx.x], &normals[threadIdx.x] );
+	    if(  threadIdx.x < (N_WPOINTS/2) )
+		    computeNormal( &imPts[4*threadIdx.x], &normals[2*threadIdx.x] );
 
 	}	
 
@@ -484,12 +483,12 @@ __global__ void observation_kernel(cudaTextureObject_t texObj, const float *came
 
     
     // some aliases
-    const float &ax = imPts[2*idx];
-    const float &ay = imPts[2*idx+1];
-    const float &bx = imPts[2*idx+2];
-    const float &by = imPts[2*idx+3];
+    const float &ax = imPts[4*idx];
+    const float &ay = imPts[4*idx+1];
+    const float &bx = imPts[4*idx+2];
+    const float &by = imPts[4*idx+3];
 
-    const float *n = &normals[idx];
+    const float *n = &normals[2*idx];
 
     // dont sample if line crosses image boundaries
     float weight = 0;
@@ -518,7 +517,7 @@ __global__ void observation_kernel(cudaTextureObject_t texObj, const float *came
     // measure image at point +- normal
     diff =  tex2D<uchar>( texObj, pt[0] + n[0], pt[1] + n[1]  ) - tex2D<uchar>( texObj, pt[0] - n[0], pt[1] - n[1] );
 
-    weight = diff*diff;
+    weight = idx*diff*diff;// weight by position in array, closest to pivot first
        
 
 #if PARTICLE_DBG

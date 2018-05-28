@@ -158,6 +158,15 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
     }
 
+    std::ofstream fd_timing("./data/timings.txt", std::ios::trunc );
+
+    if( !fd_timing.is_open() )
+    {
+	std::cerr << "Could not open timings\n";
+	exit( EXIT_FAILURE );
+    }
+
+
     
     float *camera = d_camera1;
     
@@ -257,6 +266,9 @@ int main(int argc, char *argv[])
 	newTime = (float)prevTimestamp/1e9;
 
 	std::cout << "Integrated over " << newTime - prevTime << "s" << std::endl;
+	// save time
+	fd_timing << newTime - prevtime << std::endl;
+
 
 	
 #ifdef _WITH_ROBOT_

@@ -206,6 +206,8 @@ tmp{5} = pi/2;
 tmp{6} = pi;
 [qn.JointPosition] = tmp{:};
 show(robot, qn,'PreservePlot',false);
+
+% getTransform(robot, qn, 'tool0')
 % return;
 
 link2_org = stlread('robot/link_2.stl');

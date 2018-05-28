@@ -10,11 +10,11 @@
 #include "camera.h"
 
 
-using namespace AVT::VmbAPI;
 
 
 namespace HH
 {
+using namespace AVT::VmbAPI;
 
 
 // 1. define observer that reacts on new frames
@@ -74,8 +74,8 @@ class ContinousCamera : public Camera
 public:
     ContinousCamera( unsigned char *imageBuffer1, unsigned char *imageBuffer2, VmbInt64_t bufferSz, std::mutex &mtx, std::atomic<unsigned long long> &timestamp, std::atomic<int> &currentCam, const  std::string cameraID1, const std::string cameraID2 )
 	: Camera( imageBuffer1, bufferSz, cameraID1, cameraID2 ),
-	  m_frame1( new Frame( imageBuffer1, bufferSz )  ),
-	  m_frame2( new Frame( imageBuffer2, bufferSz )  )
+	  m_frame1( new AVT::VmbAPI::Frame( imageBuffer1, bufferSz )  ),
+	  m_frame2( new AVT::VmbAPI::Frame( imageBuffer2, bufferSz )  )
 	{
 	    // base constructor starts cameras
 
