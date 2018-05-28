@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
 
 #ifdef _WITH_ROBOT_
-    float initialStates[N_STATES] = {1.5, 0.8, 1.8, 0.0324, 0, 0,	\
+    float initialStates[N_STATES] = {1.5, 0.8, 1.8, 0, -0.04, 0,	\
 				    0, 0, 0, 0, 0, 0};
 #else
     float initialStates[N_STATES] = {1.5, 0, 1.9, 0, 0, 0,	\
