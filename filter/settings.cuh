@@ -33,7 +33,7 @@ typedef unsigned char uchar;
 /* pre-estimated hanger parameters */
 namespace PARAMETER
 {
-    const float LENGTH = 1.0f;// meter
+    const float LENGTH = 0.9;// meter
     const float THETA_ALPHA = 0;// rad
     const float THETA_BETA = 0;// rad
 }
