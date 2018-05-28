@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     float initialStates[N_STATES] = {1.5, 0.92, 2.0, 0.0324, 0, 0,	\
 				    0, 0, 0, 0, 0, 0};
 #else
-    float initialStates[N_STATES] = {1.5, 0, 1.95, 0.0324, 0, 0,	\
+    float initialStates[N_STATES] = {1.5, 0, 1.9, 0, 0, 0,	\
 				    0, 0, 0, 0, 0, 0};
 #endif
     // 0.1m, 0.01m/s, ~5.7 deg, ~5.7deg/s
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
     }
 
-
+    std::cout << "Starting capture" << std::endl;
     
     float *camera = d_camera1;
     
@@ -187,9 +187,11 @@ int main(int argc, char *argv[])
     {
 	// loop until new frame is in
 	//std::cout << (float)newTimestamp/1e9 << std::endl;
+      //std::cout << (newTimestamp - prevTimestamp)/1e9 << std::endl;
     }
     prevTimestamp = newTimestamp;
     prevTime = (float)prevTimestamp/1e9;
+
 
     //    cam->stopCapture();
 
@@ -228,6 +230,7 @@ int main(int argc, char *argv[])
 	{
 	    // loop until new frame is in
 	    //std::cout << (float)newTimestamp/1e9 << std::endl;
+//	  std::cout << (newTimestamp - prevTimestamp)/1e9 << std::endl;
 	}
 	
 	lock.lock();
@@ -267,7 +270,7 @@ int main(int argc, char *argv[])
 
 	std::cout << "Integrated over " << newTime - prevTime << "s" << std::endl;
 	// save time
-	fd_timing << newTime - prevtime << std::endl;
+	fd_timing << newTime - prevTime << std::endl;
 
 
 	
