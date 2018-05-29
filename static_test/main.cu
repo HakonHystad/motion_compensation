@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	exit( EXIT_FAILURE );
 
 #ifdef _WITH_ROBOT_
-    float initialStates[N_STATES] = {1.5, 0.8, 1.8, 0, 0, 0,	\
+    float initialStates[N_STATES] = {1.5, 0.8, 1.7, 0, 0, 0,	\
 				    0, 0, 0, 0, 0, 0};
 #else
     float initialStates[N_STATES] = {1.5, 0, 1.9, 0, 0, 0,	\
@@ -126,8 +126,9 @@ int main(int argc, char *argv[])
 	robot.pose[i] = initialStates[i];
     for (int i = 0; i < 3; ++i)
 	robot.pose[i+3] = initialStates[i+ALPHA_IDX];
-    robot.pose[3] = 3.141592;
-    robot.pose[2] += 0.2;
+    robot.pose[3] = -3.141592;
+    robot.pose[5] = 1.7453;
+
 	std::cout << "Initiating at ";
 	for( int i = 0; i<6; i++ )
 	     std::cout << robot.pose[i] << " ";
