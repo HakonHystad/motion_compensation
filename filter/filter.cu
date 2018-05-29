@@ -552,7 +552,7 @@ __device__ inline float dynamicsAlpha( float alpha, float beta, float alpha_dot,
 {
     float sinBeta, cosBeta;
     sincosf( beta, &sinBeta, &cosBeta );
-    return ( alpha_dot*beta_dot*sinBeta - (9.81f/PARAMETER::LENGTH)*sinf(alpha) )/cosBeta;
+    return ( 2*alpha_dot*beta_dot*sinBeta - (9.81f/PARAMETER::LENGTH)*sinf(alpha) )/cosBeta;
 }
 
 __device__ inline float dynamicsBeta( float beta, float alpha_dot )
