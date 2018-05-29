@@ -6,7 +6,7 @@ typedef unsigned char uchar;
 #define PARTICLE_BLK_SZ 512
 #define ROUND_TO_BLK_SZ( n ) ( (n + PARTICLE_BLK_SZ/2)/PARTICLE_BLK_SZ )*PARTICLE_BLK_SZ
 
-#define INITIAL_N_PARTICLES 500000// set this as a nominal value, it will be rounded to nearest multiple of block size
+#define INITIAL_N_PARTICLES 100000// set this as a nominal value, it will be rounded to nearest multiple of block size
 #define N_PARTICLES ROUND_TO_BLK_SZ( INITIAL_N_PARTICLES )
 #define N_STATES 12
 #define STEP_SZ 0.003f
@@ -71,12 +71,12 @@ namespace PARAMETER
 
 
 // noise deviatiom
-#define X_SIGMA 0.003f
-#define Y_SIGMA 0.003f
-#define Z_SIGMA 0.003f
-#define X_D_SIGMA 0.003f
-#define Y_D_SIGMA 0.003f
-#define Z_D_SIGMA 0.003f
+#define X_SIGMA 0.001f
+#define Y_SIGMA 0.001f
+#define Z_SIGMA 0.001f
+#define X_D_SIGMA 0.001f
+#define Y_D_SIGMA 0.001f
+#define Z_D_SIGMA 0.001f
 #define ALPHA_SIGMA 0.003f
 #define BETA_SIGMA 0.003f
 #define GAMMA_SIGMA 0.003f
