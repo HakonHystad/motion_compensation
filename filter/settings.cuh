@@ -71,12 +71,12 @@ namespace PARAMETER
 
 
 // noise deviatiom
-#define X_SIGMA 0.001f
-#define Y_SIGMA 0.001f
-#define Z_SIGMA 0.001f
-#define X_D_SIGMA 0.001f
-#define Y_D_SIGMA 0.001f
-#define Z_D_SIGMA 0.001f
+#define X_SIGMA 0.003f
+#define Y_SIGMA 0.003f
+#define Z_SIGMA 0.003f
+#define X_D_SIGMA 0.003f
+#define Y_D_SIGMA 0.003f
+#define Z_D_SIGMA 0.003f
 #define ALPHA_SIGMA 0.003f
 #define BETA_SIGMA 0.003f
 #define GAMMA_SIGMA 0.003f
