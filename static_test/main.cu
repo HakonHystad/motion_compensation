@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
 #ifdef _WITH_ROBOT_
     robot.pose[1] -= 2*initialStates[1];
     robot.pose[2] -= 0.1;
+    robot.pose[0] -= 0.1;
     robot.move(true);
 #endif
 
