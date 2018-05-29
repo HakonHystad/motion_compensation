@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	robot.pose[i+3] = initialStates[i+ALPHA_IDX];
     robot.pose[3] = -3.141592;
     robot.pose[5] = 1.7453;
-
+ 
 	std::cout << "Initiating at ";
 	for( int i = 0; i<6; i++ )
 	     std::cout << robot.pose[i] << " ";
@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
 
 #ifdef _WITH_ROBOT_
     robot.pose[1] -= 2*initialStates[1];
+    robot.pose[2] -= 0.1;
     robot.move(true);
 #endif
 
