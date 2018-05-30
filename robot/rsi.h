@@ -44,24 +44,27 @@
 #include <vector>
 #include <iomanip> // setprecision
 #include <sstream> // stringstream
+#include <chrono>
+#include <ctime>
+#include <ratio>
 
 #include "kinematics.h"// NB! dependency: orocos kdl library installed
-#include "../filter/utilities.cuh"
-#include "../filter/settings.cuh"
 
 //////////////////////////////////////////////////////////////
 // config
 /////////////////////////////////////////////////////////////
 
-#define _DEBUG_RSI_
-//#define _SOFT_STOP_HH_// repeats the last pose after ending so the manipulator can slow down
+//#define _DEBUG_RSI_
+#define _SOFT_START_HH_ 2// ramps up n seconds from start config to avoid jumps
+#define _SOFT_STOP_HH_ 2// continues n seconds after ending to slow down
+
 
 namespace HH
 {
     
     const int MAXBUFLEN = 1024;
 
-    const std::vector<double> home_axis_kr120 = {0.0, -1.5707963268, 1.5707963268, 0.0, 1.5707963268, 3.1415926};
+    const std::vector<double> home_axis_kr120 = {0.0, -1.5707963268, 1.5707963268, 0.0, 1.5707963268, 0};//3.1415926};
 
 }
 
@@ -105,7 +108,9 @@ public:
 	  m_signal( false ),
 	  m_end( true ),
 	  m_error( false ),
+          m_ready(false),
 	  m_kin( base, tool, manipulator, q_home ),
+          m_home( q_home ),
 	  m_pose( startPose )
 	{
 	    this->n_joints = q_home.size();
@@ -170,6 +175,11 @@ public:
 	    return !m_error;
 	}
 
+    bool isReady()
+    {
+      return m_ready;
+    }
+
 
     
 
@@ -185,7 +195,7 @@ protected:
     // Remember to handle the case if interval<some s which means currentPose has been very recently refreshed. And update currentPose
     virtual void update( double newPose[6], std::vector<double> &currentPose, double interval )
 	{
-	    std::cout << "Using default update" << std::endl;
+	  //	    std::cout << "Using default update" << std::endl;
 	    //  if( interval < 1e-6 )
 	    {
 		// here it is assumed that currentPose has the linear and angular velocities as well:
@@ -219,23 +229,38 @@ protected:
 	    // initialize
 	    m_error = false;
 	    m_end = false;
-	    double newTime = get_current_time();
-	    double oldTime = newTime;
-
+	    
+	    std::chrono::duration<double> duration;
+	    
 	    double *axis = new double[ this->n_joints ];
+	    double *prev_axis = new double[ this->n_joints ];
 
 	    m_kin.getJoints( axis );
-
+	    /*
+	    double test[6];
+	    m_kin.fk(test);
+	    for(int i = 0; i<6; i++)
+	      std::cout << test[i] << " ";
+	    std::cout << std::endl;
+	    */
 	    std::string ipoc;
 
 	    std::unique_lock<std::mutex> lock(m_mtx);
 	    std::vector<double> currentPose = m_pose;
 	    lock.unlock();
 
+	    auto newTime = std::chrono::steady_clock::now();
+	    auto oldTime = newTime;
+	    double sum_time = 0;
+
 	    //////////////////////////////////////////////////////////////
 	    // main loop
 	    while( !m_end )
 	    {
+		oldTime = newTime;
+
+		for( int i = 0; i<this->n_joints; ++i )
+		    prev_axis[i] = axis[i];
 		//////////////////////////////////////////////////////////////
 		// wait for until controller needs new update
 		if( receive() < 1 )
@@ -243,6 +268,7 @@ protected:
 		    m_error = true;
 		    break;
 		}
+		m_ready = true;
 		
 		//////////////////////////////////////////////////////////////
 		// extract ACK signal to send back
@@ -258,7 +284,8 @@ protected:
 
 		//////////////////////////////////////////////////////////////
 		// refresh with new pose if one is given
-		newTime = get_current_time();
+		newTime = std::chrono::steady_clock::now();
+		
 		
 		if( m_signal )
 		{	        
@@ -272,11 +299,14 @@ protected:
 		//////////////////////////////////////////////////////////////
 		// get intermidiate pose
 		double sendPose[6];// x,y,z,A,B,C
-		
-		update( sendPose, currentPose, newTime - oldTime );
-		oldTime = newTime;
+		duration = std::chrono::duration_cast<std::chrono::microseconds>(newTime - oldTime);
+		update( sendPose, currentPose, duration.count() );
+
+				
 
 #ifdef _DEBUG_RSI_
+		std::cout << "Time since last update: " << duration.count() << std::endl;
+		
 		std::cout << "\nNew pose:\n";
 		for (int i = 0; i < 6; ++i)
 		    std::cout << sendPose[i] << " ";
@@ -292,7 +322,19 @@ protected:
 		    break;
 		}
 
+		//////////////////////////////////////////////////////////////
+		// perform interpolation if in start up
+		if( sum_time <= _SOFT_START_HH_ )
+		{
+		    sum_time += duration.count();
+		    rampup( axis, sum_time, _SOFT_START_HH_ );
+		}
 
+
+
+		for( int i = 0; i<this->n_joints; ++i )
+		    axis[i] -= m_home[i];
+		  
 		//////////////////////////////////////////////////////////////
 		// send the new pose to the controller
 		packXML( axis, ipoc );// make xml string with joint angles and IPOC
@@ -304,23 +346,66 @@ protected:
 		    break;
 		}
 
-	    }// while not ended
 
-#ifdef _SOFT_STOP_HH_  
-	    // TODO soft stop, maybe repeat the last pose a couple times
-	    for (int i = 0; i < 250; ++i)
-	    {
-		if( receive()<1 )
-		    break;
-		extractTimestamp( ipoc );
-		packXML( axis, ipoc );// make xml string with joint angles and IPOC
-		send(ipoc);
-	    }
+	    }// while not ended
+#ifdef _DEBUG_RSI_
+	    std::cout << "Ended RSI, slowing down\n";
 #endif
+	    m_ready = false;
+
+	    //////////////////////////////////////////////////////////////
+	    // slow down the joints to a soft stop
+
+	    if( !m_error )
+	    {
+
+		const double period = duration.count();
+		
+
+		for(int i = 0; i < this->n_joints; ++i)
+		{
+		    // find out how fast the joint is moving ca
+		    prev_axis[i] = ( axis[i] - prev_axis[i] )/period;// rad/s
+		}
+
+		const int tf = _SOFT_STOP_HH_/period;
+		double *new_axis = new double[ this->n_joints ];
+
+		for (int i = 0; i < tf; ++i)
+		{
+		    if( receive()<1 )
+			break;
+		    extractTimestamp( ipoc );
+		    // ramp down speed and acceleration by a cubic polynomial
+		    rampdown( axis, prev_axis, i*period, _SOFT_STOP_HH_, new_axis );
+		    		    
+		    packXML( new_axis, ipoc );// make xml string with joint angles and IPOC
+		    send(ipoc);
+		}
+		delete [] new_axis;
+	    }
 
 	    delete [] axis;
+	    delete [] prev_axis;
+
 	    m_end = true;
 	}
+
+    void rampdown( const double axis[], const double speed[], double t, double tf, double out[] )
+	{
+	    double r = t/tf;
+	    for(int i = 0; i < this->n_joints; ++i)
+		out[i] = speed[i]*t*( (1/3)*r*r - r + 1 ) + axis[i];
+	}
+
+    void rampup( double axis2[], double t, double tf )
+	{
+	    double r = t/tf;
+	    for(int i = 0; i < this->n_joints; ++i)
+		axis2[i] = (axis2[i]-m_home[i])*r*r*( 1.5 - r ) + m_home[i];
+   
+	}
+
 
 
 private:
@@ -335,9 +420,11 @@ private:
     std::atomic<bool> m_signal;
     std::atomic<bool> m_end;
     std::atomic<bool> m_error;
+    std::atomic<bool> m_ready;
 
     std::mutex m_mtx;
     std::vector<double> m_pose;
+    const std::vector<double> m_home;
     int n_joints;
 
     

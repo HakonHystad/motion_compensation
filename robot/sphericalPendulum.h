@@ -245,7 +245,7 @@ private:
     inline double dynamicsBeta_d( double alpha, double beta, double gamma, double alpha_dot, double beta_dot, double gamma_dot )
 	{
 	    double sinBeta = sin(beta),  cosBeta = cos(beta);
-	    return -( 9.81/PARAMETER::LENGTH + alpha_dot*alpha_dot )*sinBeta*cosBeta;
+	    return -( (9.81/PARAMETER::LENGTH)*cos(alpha) + alpha_dot*alpha_dot*cosBeta )*sinBeta;
 	}
 
     inline double dynamicsGamma_d( double alpha, double beta, double gamma, double alpha_dot, double beta_dot, double gamma_dot )

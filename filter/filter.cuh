@@ -28,7 +28,7 @@ extern void checkCUDAError(const std::string msg);
 // motion equations
 /////////////////////////////////////////////////////////////
 __device__ float dynamicsAlpha( float alpha, float beta, float alpha_dot, float beta_dot );
-__device__ float dynamicsBeta( float beta, float alpha_dot );
+__device__ float dynamicsBeta( float alpha, float beta, float alpha_dot );
 
 //////////////////////////////////////////////////////////////
 // project world points to image points transforming the camera

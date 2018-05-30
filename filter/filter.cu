@@ -363,7 +363,7 @@ __global__ void motion_kernel( curandState *rngStates, float time_left, float *s
 
 	
 	STATE_ALPHA_D += STEP_SZ*dynamicsAlpha( alpha, beta, alpha_d, STATE_BETA_D );// alpha_dot
-	STATE_BETA_D += STEP_SZ*dynamicsBeta( beta, alpha_d );// beta_dot
+	STATE_BETA_D += STEP_SZ*dynamicsBeta( alpha, beta, alpha_d );// beta_dot
  
 	time_left -= STEP_SZ;
 
@@ -377,7 +377,7 @@ __global__ void motion_kernel( curandState *rngStates, float time_left, float *s
     STATE_BETA += time_left*STATE_BETA_D;// - PARAMETER::THETA_BETA;// beta
 
     STATE_ALPHA_D += time_left*dynamicsAlpha( alpha, beta, alpha_d, STATE_BETA_D );// alpha_dot
-    STATE_BETA_D += time_left*dynamicsBeta( beta, alpha_d );// beta_dot
+    STATE_BETA_D += time_left*dynamicsBeta( alpha, beta, alpha_d );// beta_dot
 
     // convert to pviot frame
     STATE_ALPHA -= PARAMETER::THETA_ALPHA;
@@ -555,11 +555,11 @@ __device__ inline float dynamicsAlpha( float alpha, float beta, float alpha_dot,
     return ( 2*alpha_dot*beta_dot*sinBeta - (9.81f/PARAMETER::LENGTH)*sinf(alpha) )/cosBeta;
 }
 
-__device__ inline float dynamicsBeta( float beta, float alpha_dot )
+__device__ inline float dynamicsBeta( float alpha, float beta, float alpha_dot )
 {
     float sinBeta, cosBeta;
     sincosf( beta, &sinBeta, &cosBeta );
-    return -( 9.81f/PARAMETER::LENGTH + alpha_dot*alpha_dot )*sinBeta*cosBeta;
+    return -( (9.81f/PARAMETER::LENGTH)*cosf(alpha) + alpha_dot*alpha_dot*cosBeta )*sinBeta;
 }
 
 
